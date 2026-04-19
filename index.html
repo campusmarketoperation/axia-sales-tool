@@ -176,7 +176,10 @@ a:hover{text-decoration:underline}
       </div>
     </div>
 
-    <div style="font-size:12px;color:var(--mu);margin-bottom:10px" id="list-count"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--mu)" id="list-count"></div>
+      <button class="btn pri sm" onclick="autoAll()" id="auto-btn">⚡ 未生成を一括生成</button>
+    </div>
     <div id="list-body"></div>
   </div>
 
@@ -198,10 +201,7 @@ a:hover{text-decoration:underline}
           <textarea id="c-memo" placeholder="HPを見た感想、口コミの内容など"></textarea>
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn pri" id="gen-btn" onclick="generate()">✨ 営業文を生成</button>
-        <button class="btn sm" onclick="autoAll()" id="auto-btn">⚡ 全企業を一括生成</button>
-      </div>
+      <button class="btn pri" id="gen-btn" onclick="generate()">✨ 営業文を生成</button>
       <div id="gen-load" style="display:none" class="loading"><div class="spin"></div>生成中...</div>
       <div id="gen-out" style="display:none">
         <hr>
