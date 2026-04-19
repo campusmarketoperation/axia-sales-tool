@@ -198,7 +198,10 @@ a:hover{text-decoration:underline}
           <textarea id="c-memo" placeholder="HPを見た感想、口コミの内容など"></textarea>
         </div>
       </div>
-      <button class="btn pri" id="gen-btn" onclick="generate()">✨ 営業文を生成</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn pri" id="gen-btn" onclick="generate()">✨ 営業文を生成</button>
+        <button class="btn sm" onclick="autoAll()" id="auto-btn">⚡ 全企業を一括生成</button>
+      </div>
       <div id="gen-load" style="display:none" class="loading"><div class="spin"></div>生成中...</div>
       <div id="gen-out" style="display:none">
         <hr>
@@ -376,7 +379,10 @@ function renderList(){
           </div>
           <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${p.category}${p.address?' · '+p.address:''}${p.tel?' · '+p.tel:''}</div>
           <div>${(p.issues||[]).map(i=>`<span class="chip">${i}</span>`).join('')}</div>
-          ${p.email?`<div style="font-size:11px;color:var(--blue);margin-top:3px">📧 ${p.email}</div>`:''}
+          <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
+            ${p.email?`<span style="font-size:11px;color:var(--blue)">📧 ${p.email}</span>`:''}
+            ${p.emailDraft?`<span style="font-size:11px;color:var(--green)">✅ 営業文あり</span>`:`<span style="font-size:11px;color:var(--mu)">営業文未生成</span>`}
+          </div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">
           <button class="btn sm" onclick="editP('${p.id}')">編集</button>
@@ -551,6 +557,51 @@ function togKey(){const i=document.getElementById('key-inp');i.type=i.type==='pa
 function ss(k,v){cfg[k]=v;localStorage.setItem('ax_c',JSON.stringify(cfg));}
 function savePros(){localStorage.setItem('ax_p',JSON.stringify(pros));}
 
+// Auto generate for all prospects without drafts
+async function autoAll(){
+  const targets=pros.filter(p=>!p.emailDraft&&p.status==='new');
+  if(!targets.length){alert('未生成の企業がありません');return;}
+  if(!confirm(targets.length+'社分の営業文を一括生成しますか？\n（API使用回数: '+targets.length+'回）'))return;
+  const btn=document.getElementById('auto-btn');
+  btn.disabled=true;
+  for(let i=0;i<targets.length;i++){
+    const p=targets[i];
+    btn.textContent=`⚡ 生成中 ${i+1}/${targets.length}`;
+    curP=p;
+    const issues=(p.issues||[]).join('、')||'デジタル化全般の遅れ';
+    const prompt=`あなたは法人向け営業のプロです。以下の情報で営業メールとSNS DMを作成してください。
+
+送り先: ${p.name}（${p.category}、${p.address||''}）
+推定課題: ${issues}
+自社: ${cfg.co} / 担当: ${cfg.name} / ${cfg.email} / ${cfg.tel}
+サービス: ${cfg.svc}
+強み: ${cfg.str}
+
+以下のフォーマットで厳密に出力（余計な説明・マークダウン不要）:
+
+===SUBJECT===
+件名（30字以内）
+===BODY===
+メール本文（250〜350字、丁寧な敬語、最後に署名）
+===DM===
+SNS DM文（80字以内、カジュアル）
+===END===`;
+    try{
+      const text=await callAI(prompt);
+      const subj=(text.match(/===SUBJECT===\s*([\s\S]*?)\s*===BODY===/)||[])[1]?.trim()||'';
+      const body=(text.match(/===BODY===\s*([\s\S]*?)\s*===DM===/)||[])[1]?.trim()||'';
+      const dm=(text.match(/===DM===\s*([\s\S]*?)\s*===END===/)||[])[1]?.trim()||'';
+      p.emailDraft={subject:subj,body};p.dmDraft=dm;
+      savePros();renderList();
+    }catch(e){console.error(p.name,e);}
+    // Rate limit: wait 2s between requests
+    if(i<targets.length-1)await new Promise(r=>setTimeout(r,2000));
+  }
+  btn.disabled=false;btn.textContent='⚡ 全企業を一括生成';
+  alert('完了！'+targets.length+'社分の営業文を生成しました');
+  renderCrm();
+}
+
 // Email scraper
 async function scrapeEmail(){
   const url=document.getElementById('f-url').value.trim();
@@ -622,7 +673,7 @@ async function searchPlaces(){
   btn.disabled=false;load.style.display='none';
 }
 
-function addPlace(info){
+async function addPlace(info){
   if(pros.find(p=>p.name===info.name)){alert('すでに登録済みです');return;}
   const cat=guessCat(info.name+' '+info.addr);
   const p={
@@ -632,12 +683,50 @@ function addPlace(info){
     status:'new',addedAt:new Date().toISOString(),sentAt:null,emailDraft:null,dmDraft:''
   };
   pros.unshift(p);savePros();renderList();updateCSel();
-  // update button
+
+  // Update button to show scraping state
   document.querySelectorAll('#search-results button').forEach(btn=>{
-    if(btn.getAttribute('onclick')?.includes(info.name.slice(0,5))){
-      btn.textContent='追加済';btn.disabled=true;btn.className='btn sm ghost';
+    if(btn.getAttribute('onclick')?.includes(info.name.replace(/'/g,'').slice(0,6))){
+      btn.textContent='📧 取得中...';btn.disabled=true;btn.className='btn sm ghost';
     }
   });
+
+  // Auto-scrape email if URL exists
+  if(info.url){
+    try{
+      const r=await fetch('/api/scrape?url='+encodeURIComponent(info.url));
+      const d=await r.json();
+      if(d.emails&&d.emails.length>0){
+        p.email=d.emails[0];
+        savePros();renderList();
+        // Update button to show email found
+        document.querySelectorAll('#search-results button').forEach(btn=>{
+          if(btn.disabled&&btn.textContent.includes('取得中')){
+            btn.textContent='✅ 追加済';
+          }
+        });
+      }else{
+        // No email found - skip silently
+        document.querySelectorAll('#search-results button').forEach(btn=>{
+          if(btn.disabled&&btn.textContent.includes('取得中')){
+            btn.textContent='追加済（メールなし）';
+          }
+        });
+      }
+    }catch{
+      document.querySelectorAll('#search-results button').forEach(btn=>{
+        if(btn.disabled&&btn.textContent.includes('取得中')){
+          btn.textContent='追加済';
+        }
+      });
+    }
+  }else{
+    document.querySelectorAll('#search-results button').forEach(btn=>{
+      if(btn.getAttribute('onclick')?.includes(info.name.replace(/'/g,'').slice(0,6))){
+        btn.textContent='追加済（HPなし）';btn.disabled=true;btn.className='btn sm ghost';
+      }
+    });
+  }
 }
 
 function guessCat(text){
