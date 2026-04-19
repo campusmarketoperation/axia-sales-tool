@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIA Sales Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f11;--sur:#161719;--sur2:#1e2023;--sur3:#252729;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);--b3:rgba(255,255,255,.22);
+  --tx:#f0f0ee;--mu:#888;--dim:#444;
+  --green:#4ade80;--green2:#86efac;
+  --blue:#60a5fa;--orange:#fb923c;--red:#f87171;--yellow:#fbbf24;
+  --r:8px;--rl:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;font-size:14px;line-height:1.6;display:flex}
+.sb{width:210px;flex-shrink:0;background:var(--sur);border-right:1px solid var(--b1);display:flex;flex-direction:column;padding:20px 0}
+.sb-logo{padding:0 18px 20px;border-bottom:1px solid var(--b1);margin-bottom:10px}
+.sb-brand{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;color:var(--green);letter-spacing:.06em}
+.sb-sub{font-size:10px;color:var(--mu);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:var(--mu);font-size:13px;border-left:2px solid transparent;transition:all .12s}
+.nav:hover{color:var(--tx);background:var(--sur2)}
+.nav.on{color:var(--green);border-left-color:var(--green);background:rgba(74,222,128,.06)}
+.nav-ic{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+.sb-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--b1)}
+.api-st{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.dot.ok{background:var(--green)}
+.main{flex:1;overflow-y:auto;padding:28px 32px;min-width:0}
+.page{display:none}.page.on{display:block}
+.ph{font-size:19px;font-weight:500;margin-bottom:3px}
+.ps{font-size:12px;color:var(--mu);margin-bottom:22px}
+.card{background:var(--sur);border:1px solid var(--b1);border-radius:var(--rl);padding:18px 22px;margin-bottom:12px}
+.card-sm{padding:12px 16px}
+.lbl{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+input,select,textarea{width:100%;background:var(--sur2);border:1px solid var(--b1);border-radius:var(--r);padding:9px 13px;color:var(--tx);font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;transition:border-color .12s}
+input:focus,select:focus,textarea:focus{border-color:var(--b2)}
+select option{background:var(--sur2)}
+textarea{resize:vertical;line-height:1.7;min-height:70px}
+.row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-end}
+.field{margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:9px 18px;border-radius:var(--r);border:1px solid var(--b2);background:transparent;color:var(--tx);font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--sur2)}
+.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--green);color:#081a0e;border-color:var(--green);font-weight:500}
+.btn.pri:hover{background:var(--green2);border-color:var(--green2)}
+.btn.sm{padding:5px 11px;font-size:12px}
+.btn.ghost{border-color:transparent;color:var(--mu)}
+.btn.ghost:hover{color:var(--tx);background:var(--sur2);border-color:var(--b1)}
+.btn.red{border-color:rgba(248,113,113,.25);color:var(--red)}
+.btn.red:hover{background:rgba(248,113,113,.08)}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.met{background:var(--sur);border:1px solid var(--b1);border-radius:var(--rl);padding:16px 18px}
+.met-v{font-size:26px;font-weight:500;font-family:'DM Mono',monospace;color:var(--green)}
+.met-l{font-size:11px;color:var(--mu);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500}
+.b-new{background:rgba(136,136,136,.12);color:var(--mu)}
+.b-sent{background:rgba(96,165,250,.12);color:var(--blue)}
+.b-replied{background:rgba(251,191,36,.12);color:var(--yellow)}
+.b-negotiating{background:rgba(251,146,60,.12);color:var(--orange)}
+.b-closed{background:rgba(74,222,128,.12);color:var(--green)}
+.b-rejected{background:rgba(248,113,113,.12);color:var(--red)}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;background:rgba(96,165,250,.1);color:var(--blue);border-radius:4px;margin:2px 3px 2px 0}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tag{padding:4px 11px;font-size:12px;border:1px solid var(--b1);border-radius:20px;cursor:pointer;color:var(--mu);transition:all .1s}
+.tag:hover{border-color:var(--b2);color:var(--tx)}
+.tag.on{background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.25)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;color:var(--mu);text-align:left;padding:9px 14px;border-bottom:1px solid var(--b1);text-transform:uppercase;letter-spacing:.05em;font-weight:500;white-space:nowrap}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--b1);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
+.email-box{background:var(--sur2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px 20px;font-size:13px;line-height:1.9;white-space:pre-wrap;margin-bottom:8px}
+.subj-box{background:var(--sur2);border:1px solid var(--b1);border-radius:var(--r);padding:9px 14px;font-size:14px;font-weight:500;margin-bottom:6px}
+.note{font-size:12px;color:var(--mu);background:rgba(255,255,255,.04);border-radius:var(--r);padding:9px 13px;line-height:1.7;margin-bottom:10px}
+.note.warn{background:rgba(251,191,36,.06);color:rgba(251,191,36,.8)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--b2);border-top-color:var(--green);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:13px;padding:8px 0}
+.empty{text-align:center;padding:40px;color:var(--mu)}
+.empty-ic{font-size:28px;margin-bottom:10px}
+hr{border:none;border-top:1px solid var(--b1);margin:18px 0}
+.ftabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.ftab{padding:4px 13px;font-size:12px;border:1px solid var(--b1);border-radius:20px;cursor:pointer;color:var(--mu);background:transparent;font-family:'Noto Sans JP',sans-serif;transition:all .1s}
+.ftab:hover{color:var(--tx);border-color:var(--b2)}
+.ftab.on{background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.25)}
+.maps-panel{background:var(--sur2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px 20px;margin-bottom:14px}
+.step{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--b1);font-size:13px}
+.step:last-child{border-bottom:none}
+.step-n{width:22px;height:22px;border-radius:50%;background:rgba(74,222,128,.15);color:var(--green);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.key-wrap{position:relative}
+.key-wrap input{padding-right:60px;font-family:'DM Mono',monospace;font-size:13px}
+.key-tog{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--mu);cursor:pointer}
+.key-tog:hover{color:var(--tx)}
+a{color:var(--blue);font-size:12px;text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<nav class="sb">
+  <div class="sb-logo">
+    <div class="sb-brand">AXIA</div>
+    <div class="sb-sub">Sales Tool</div>
+  </div>
+  <div class="nav on" onclick="go('list')"><span class="nav-ic">📋</span>企業リスト</div>
+  <div class="nav" onclick="go('compose')"><span class="nav-ic">✉️</span>営業文生成</div>
+  <div class="nav" onclick="go('crm')"><span class="nav-ic">📊</span>CRM管理</div>
+  <div class="nav" onclick="go('settings')"><span class="nav-ic">⚙️</span>設定</div>
+  <div class="sb-foot">
+    <div class="api-st"><div class="dot" id="api-dot"></div><span id="api-lbl">APIキー未設定</span></div>
+  </div>
+</nav>
+
+<div class="main">
+
+  <!-- 企業リスト -->
+  <div class="page on" id="p-list">
+    <div class="ph">企業リスト</div>
+    <div class="ps">Googleマップで実在の中小企業を探し、情報を登録します</div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">① AIで企業を検索（Google Places API）</div>
+      <div class="row">
+        <input id="map-q" placeholder="大阪 整骨院、東京 美容室、大阪 税理士" style="flex:1">
+        <button class="btn pri" id="search-btn" onclick="searchPlaces()">検索</button>
+        <button class="btn ghost" onclick="openMaps()">マップを開く</button>
+      </div>
+      <div id="search-err" style="font-size:12px;color:var(--red);margin-top:6px;display:none"></div>
+      <div id="search-load" style="display:none" class="loading"><div class="spin"></div>検索中...</div>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:500">② 企業を登録</div>
+        <button class="btn sm" id="form-toggle" onclick="toggleForm()">フォームを開く</button>
+      </div>
+      <div id="add-form" style="display:none">
+        <div class="g2">
+          <div class="field"><div class="lbl">企業名 *</div><input id="f-name" placeholder="〇〇整骨院 梅田院"></div>
+          <div class="field"><div class="lbl">業種</div>
+            <select id="f-cat" onchange="renderFormTags(this.value)">
+              <option>飲食店</option><option>美容室・サロン</option><option selected>整体・整骨院</option>
+              <option>税理士・会計士</option><option>不動産</option><option>小売店</option>
+              <option>クリニック・医院</option><option>学習塾</option><option>フィットネス</option>
+              <option>建設・工務店</option><option>運送業</option><option>IT・Web</option><option>その他</option>
+            </select>
+          </div>
+          <div class="field"><div class="lbl">住所</div><input id="f-addr" placeholder="大阪市北区〇〇町1-2-3"></div>
+          <div class="field"><div class="lbl">電話番号</div><input id="f-tel" placeholder="06-XXXX-XXXX"></div>
+        </div>
+        <div class="field"><div class="lbl">WebサイトURL</div>
+          <div style="display:flex;gap:6px">
+            <input id="f-url" placeholder="https://example.com" style="flex:1">
+            <button class="btn sm" onclick="scrapeEmail()" id="scrape-btn">メール取得</button>
+          </div>
+        </div>
+        <div class="field"><div class="lbl">メールアドレス</div>
+          <input id="f-email" placeholder="HP取得 or 手動入力">
+          <div id="scrape-result" style="font-size:11px;color:var(--mu);margin-top:4px"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">推定課題（複数選択）</div>
+          <div id="f-tags" class="tags"></div>
+        </div>
+        <div class="field"><div class="lbl">メモ（口コミ・SNS状況など）</div><textarea id="f-memo" placeholder="HPが古い。Instagramなし。Googleレビュー3.2。"></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn pri" onclick="saveProspect()">保存する</button>
+          <button class="btn ghost" onclick="toggleForm()">キャンセル</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--mu);margin-bottom:10px" id="list-count"></div>
+    <div id="list-body"></div>
+  </div>
+
+  <!-- 営業文生成 -->
+  <div class="page" id="p-compose">
+    <div class="ph">営業文生成</div>
+    <div class="ps">企業を選択してAIが課題に合わせた営業文を生成します</div>
+    <div class="card">
+      <div class="lbl">企業を選択</div>
+      <select id="c-sel" onchange="selectP(this.value)"><option value="">-- 企業を選択 --</option></select>
+    </div>
+    <div id="c-body" style="display:none">
+      <div class="card card-sm" id="c-meta" style="margin-bottom:10px"></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="lbl" style="margin-bottom:6px">課題（タップで選択・解除）</div>
+        <div id="c-tags" class="tags"></div>
+        <div style="margin-top:12px">
+          <div class="lbl">追加メモ</div>
+          <textarea id="c-memo" placeholder="HPを見た感想、口コミの内容など"></textarea>
+        </div>
+      </div>
+      <button class="btn pri" id="gen-btn" onclick="generate()">✨ 営業文を生成</button>
+      <div id="gen-load" style="display:none" class="loading"><div class="spin"></div>生成中...</div>
+      <div id="gen-out" style="display:none">
+        <hr>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:500">メール</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm" id="cp-email" onclick="cpEmail()">コピー</button>
+            <button class="btn sm" onclick="gmail()">Gmailで開く</button>
+          </div>
+        </div>
+        <div class="lbl">件名</div><div class="subj-box" id="out-subj"></div>
+        <div class="lbl">本文</div><div class="email-box" id="out-body"></div>
+        <hr>
+        <div class="note warn">⚠️ SNS DMの自動送信はアカウントBAN対象。コピーして手動送信してください。</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:500">SNS DM（Instagram / X）</div>
+          <button class="btn sm" id="cp-dm" onclick="cpDm()">コピー</button>
+        </div>
+        <div class="email-box" id="out-dm"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn pri sm" onclick="markSent()">✅ 送信済みにする</button>
+          <button class="btn sm" onclick="go('crm')">CRM管理 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRM -->
+  <div class="page" id="p-crm">
+    <div class="ph">CRM管理</div>
+    <div class="ps">営業進捗を管理します</div>
+    <div class="metrics" id="met-row"></div>
+    <div class="ftabs" id="ftabs"></div>
+    <div class="card" style="padding:0;overflow:hidden"><div id="crm-body"></div></div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="page" id="p-settings">
+    <div class="ph">設定</div>
+    <div class="ps">APIキーと自社情報を入力してください</div>
+    <div class="card">
+      <div class="lbl" style="margin-bottom:5px">Gemini APIキー（営業文生成）</div>
+      <div class="key-wrap" style="margin-bottom:14px">
+        <input type="password" id="key-inp" placeholder="AIzaSy..." oninput="saveKey(this.value)">
+        <span class="key-tog" onclick="togKey()">表示</span>
+      </div>
+      <div class="lbl" style="margin-bottom:5px">Google Places APIキー（企業検索）</div>
+      <div class="key-wrap">
+        <input type="password" id="places-inp" placeholder="AIzaSy..." oninput="savePlacesKey(this.value)">
+        <span class="key-tog" onclick="togPlaces()">表示</span>
+      </div>
+      <div style="font-size:12px;color:var(--mu);margin-top:6px">
+        Google Cloud Console → Places API (New) を有効化してAPIキーを取得。同じキーでもOK。チャットには貼らないこと。
+      </div>
+    </div>
+    <div class="card">
+      <div class="g2">
+        <div class="field"><div class="lbl">会社名</div><input id="s-co" oninput="ss('co',this.value)" placeholder="AXIA"></div>
+        <div class="field"><div class="lbl">担当者名</div><input id="s-name" oninput="ss('name',this.value)" placeholder="谷屋 海斗"></div>
+        <div class="field"><div class="lbl">メールアドレス</div><input id="s-email" oninput="ss('email',this.value)"></div>
+        <div class="field"><div class="lbl">電話番号</div><input id="s-tel" oninput="ss('tel',this.value)"></div>
+      </div>
+      <div class="field"><div class="lbl">提供サービス</div><input id="s-svc" oninput="ss('svc',this.value)" placeholder="LP制作、LINE構築、ChatGPT業務自動化、HP制作"></div>
+      <div class="field"><div class="lbl">強み・特徴</div><textarea id="s-str" oninput="ss('str',this.value)" placeholder="大阪密着・AI特化・学生価格"></textarea></div>
+    </div>
+    <div class="note">設定はlocalStorageに自動保存されます。</div>
+  </div>
+
+</div>
+<script>
+const ISSUE_MAP={
+  '飲食店':['予約が電話のみ','SNS投稿が不定期','HPがスマホ非対応','口コミへの返信なし','LINE未活用'],
+  '美容室・サロン':['LINE予約が未整備','SNS更新が少ない','クーポン配信できていない','HPが古い'],
+  '整体・整骨院':['WEB予約が未対応','LINE公式未活用','HPの情報が少ない','口コミが少ない','施術メニューが分かりにくい'],
+  '税理士・会計士':['HPがテキスト中心','問い合わせ導線が弱い','実績掲載なし','AI活用の遅れ'],
+  '不動産':['物件更新が手動','LINE問い合わせ未対応','SEOが弱い'],
+  '小売店':['ECサイトなし','SNS集客弱い','メルマガ未活用'],
+  'クリニック・医院':['WEB問診未整備','HPが古い','患者向けLINE未活用'],
+  '学習塾':['保護者連絡がバラバラ','HP経由集客弱い','体験申込フォームなし'],
+  'フィットネス':['会員管理が手動','SNS集客弱い','LINE会員証なし'],
+  '建設・工務店':['施工事例の発信不足','HPがスマホ非対応','問い合わせ導線が弱い'],
+  '運送業':['採用ページが貧弱','HPが古い','顧客対応の自動化ゼロ'],
+  'IT・Web':['サービス説明が分かりにくい','実績掲載不足','問い合わせ後のフォロー未実施'],
+  'その他':['HPのデジタル化が遅れ','SNS活用不足','業務自動化ゼロ'],
+};
+const ST={new:'未対応',sent:'送信済',replied:'返信あり',negotiating:'商談中',closed:'成約',rejected:'NG'};
+const BC={new:'b-new',sent:'b-sent',replied:'b-replied',negotiating:'b-negotiating',closed:'b-closed',rejected:'b-rejected'};
+const PAGES={list:'p-list',compose:'p-compose',crm:'p-crm',settings:'p-settings'};
+const NAVS=['list','compose','crm','settings'];
+
+let pros=JSON.parse(localStorage.getItem('ax_p')||'[]');
+let cfg={...{co:'AXIA',name:'谷屋 海斗',email:'axiaofficial.contact@gmail.com',tel:'090-6370-9528',svc:'LP制作、LINE構築、ChatGPT業務自動化、HP制作',str:'大阪を拠点とする学生エンジニアチームが、業界最安水準の価格でAI・Web制作を提供。'},...JSON.parse(localStorage.getItem('ax_c')||'{}')};
+let apiKey=localStorage.getItem('ax_k')||'';
+let curP=null,filter='all',editId=null;
+
+function init(){
+  loadSettings();updateApiSt();renderFormTags('整体・整骨院');renderList();renderCrm();updateCSel();
+}
+function go(pg){
+  NAVS.forEach((k,i)=>{
+    document.getElementById(PAGES[k]).classList.remove('on');
+    document.querySelectorAll('.nav')[i].classList.remove('on');
+  });
+  document.getElementById(PAGES[pg]).classList.add('on');
+  document.querySelectorAll('.nav')[NAVS.indexOf(pg)].classList.add('on');
+  if(pg==='crm')renderCrm();
+  if(pg==='compose')updateCSel();
+}
+function updateApiSt(){
+  const ok=apiKey&&apiKey.startsWith('AIza');
+  document.getElementById('api-dot').classList.toggle('ok',ok);
+  document.getElementById('api-lbl').textContent=ok?'API接続済':'APIキー未設定';
+}
+async function callAI(prompt){
+  if(!apiKey)throw new Error('設定タブでGemini APIキーを入力してください');
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.8,maxOutputTokens:1500}})
+  });
+  if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
+  const d=await r.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+}
+function openMaps(){
+  const q=document.getElementById('map-q').value.trim()||'大阪 中小企業';
+  window.open(`https://www.google.com/maps/search/${encodeURIComponent(q)}`,'_blank');
+}
+function toggleForm(){
+  const f=document.getElementById('add-form'),btn=document.getElementById('form-toggle');
+  const open=f.style.display==='none';
+  f.style.display=open?'block':'none';
+  btn.textContent=open?'閉じる':'フォームを開く';
+  if(open&&!editId)clearForm();
+}
+function renderFormTags(cat){
+  const issues=ISSUE_MAP[cat]||ISSUE_MAP['その他'];
+  const saved=editId?(pros.find(p=>p.id===editId)?.issues||[]):[];
+  document.getElementById('f-tags').innerHTML=issues.map(iss=>
+    `<span class="tag${saved.includes(iss)?' on':''}" onclick="this.classList.toggle('on')">${iss}</span>`
+  ).join('');
+}
+function clearForm(){
+  ['f-name','f-addr','f-tel','f-url','f-email','f-memo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('scrape-result').textContent='';
+  document.getElementById('f-cat').value='整体・整骨院';
+  renderFormTags('整体・整骨院');editId=null;
+}
+function saveProspect(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('企業名を入力してください');return;}
+  const issues=Array.from(document.querySelectorAll('#f-tags .tag.on')).map(t=>t.textContent);
+  const p={
+    id:editId||Date.now()+'',
+    name,category:document.getElementById('f-cat').value,
+    address:document.getElementById('f-addr').value.trim(),
+    tel:document.getElementById('f-tel').value.trim(),
+    url:document.getElementById('f-url').value.trim(),
+    memo:document.getElementById('f-memo').value.trim(),
+    issues,email:document.getElementById('f-email').value.trim(),status:'new',addedAt:new Date().toISOString(),sentAt:null,emailDraft:null,dmDraft:''
+  };
+  if(editId){pros=pros.map(x=>x.id===editId?p:x);}else{pros.unshift(p);}
+  savePros();renderList();updateCSel();toggleForm();editId=null;
+}
+function renderList(){
+  document.getElementById('list-count').textContent=pros.length+'社登録済み';
+  const el=document.getElementById('list-body');
+  if(!pros.length){el.innerHTML='<div class="empty"><div class="empty-ic">📋</div>まだ登録がありません<br><span style="font-size:12px">Googleマップで探して登録してください</span></div>';return;}
+  el.innerHTML=pros.map(p=>`
+    <div class="card card-sm" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-weight:500;font-size:14px">${p.name}</span>
+            <span class="badge ${BC[p.status]}">${ST[p.status]}</span>
+          </div>
+          <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${p.category}${p.address?' · '+p.address:''}${p.tel?' · '+p.tel:''}</div>
+          <div>${(p.issues||[]).map(i=>`<span class="chip">${i}</span>`).join('')}</div>
+          ${p.email?`<div style="font-size:11px;color:var(--blue);margin-top:3px">📧 ${p.email}</div>`:''}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="btn sm" onclick="editP('${p.id}')">編集</button>
+          <button class="btn sm pri" onclick="toCompose('${p.id}')">営業文</button>
+          <button class="btn sm red" onclick="delP('${p.id}')">削除</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function editP(id){
+  const p=pros.find(x=>x.id===id);if(!p)return;
+  editId=id;
+  document.getElementById('f-name').value=p.name;
+  document.getElementById('f-cat').value=p.category;
+  document.getElementById('f-addr').value=p.address||'';
+  document.getElementById('f-tel').value=p.tel||'';
+  document.getElementById('f-url').value=p.url||'';
+  document.getElementById('f-email').value=p.email||'';
+  document.getElementById('f-memo').value=p.memo||'';
+  renderFormTags(p.category);
+  setTimeout(()=>{
+    document.querySelectorAll('#f-tags .tag').forEach(t=>{if((p.issues||[]).includes(t.textContent))t.classList.add('on');});
+  },50);
+  document.getElementById('add-form').style.display='block';
+  document.getElementById('form-toggle').textContent='閉じる';
+}
+function delP(id){
+  if(!confirm('削除しますか？'))return;
+  pros=pros.filter(p=>p.id!==id);savePros();renderList();updateCSel();
+  if(curP?.id===id)curP=null;
+}
+function toCompose(id){
+  curP=pros.find(x=>x.id===id)||null;
+  go('compose');
+  setTimeout(()=>{document.getElementById('c-sel').value=id;selectP(id);},50);
+}
+function updateCSel(){
+  document.getElementById('c-sel').innerHTML='<option value="">-- 企業を選択 --</option>'+
+    pros.map(p=>`<option value="${p.id}">${p.name} [${ST[p.status]}]</option>`).join('');
+  if(curP)document.getElementById('c-sel').value=curP.id;
+}
+function selectP(id){
+  const p=pros.find(x=>x.id===id)||null;
+  const body=document.getElementById('c-body');
+  if(!p){body.style.display='none';curP=null;return;}
+  curP=p;body.style.display='block';
+  document.getElementById('c-meta').innerHTML=
+    `<div style="display:flex;gap:14px;font-size:12px;color:var(--mu);flex-wrap:wrap">
+      <span>${p.category}</span>${p.address?`<span>${p.address}</span>`:''}${p.tel?`<span>${p.tel}</span>`:''}
+      ${p.url?`<a href="${p.url}" target="_blank">${p.url.replace(/^https?:\/\//,'').slice(0,35)}</a>`:''}
+    </div>`;
+  const issues=ISSUE_MAP[p.category]||ISSUE_MAP['その他'];
+  const all=[...new Set([...(p.issues||[]),...issues])];
+  document.getElementById('c-tags').innerHTML=all.map(iss=>
+    `<span class="tag${(p.issues||[]).includes(iss)?' on':''}" onclick="togIssue(this,'${iss}')">${iss}</span>`
+  ).join('');
+  document.getElementById('c-memo').value=p.memo||'';
+  const out=document.getElementById('gen-out');
+  if(p.emailDraft){
+    document.getElementById('out-subj').textContent=p.emailDraft.subject||'';
+    document.getElementById('out-body').textContent=p.emailDraft.body||'';
+    document.getElementById('out-dm').textContent=p.dmDraft||'';
+    out.style.display='block';
+  }else out.style.display='none';
+}
+function togIssue(el,iss){
+  if(!curP)return;
+  el.classList.toggle('on');
+  curP.issues=Array.from(document.querySelectorAll('#c-tags .tag.on')).map(t=>t.textContent);
+  savePros();
+}
+async function generate(){
+  if(!curP)return;
+  const btn=document.getElementById('gen-btn'),load=document.getElementById('gen-load'),out=document.getElementById('gen-out');
+  btn.disabled=true;load.style.display='flex';out.style.display='none';
+  const issues=(curP.issues||[]).join('、')||'デジタル化全般の遅れ';
+  const memo=document.getElementById('c-memo').value;
+  const prompt=`あなたは法人向け営業のプロです。以下の情報で営業メールとSNS DMを作成してください。
+
+送り先: ${curP.name}（${curP.category}、${curP.address||''}）
+推定課題: ${issues}
+追加情報: ${memo||'特になし'}
+自社: ${cfg.co} / 担当: ${cfg.name} / ${cfg.email} / ${cfg.tel}
+サービス: ${cfg.svc}
+強み: ${cfg.str}
+
+以下のフォーマットで厳密に出力（余計な説明・マークダウン不要）:
+
+===SUBJECT===
+件名（30字以内）
+===BODY===
+メール本文（250〜350字、丁寧な敬語、最後に署名）
+===DM===
+SNS DM文（80字以内、カジュアル）
+===END===`;
+  try{
+    const text=await callAI(prompt);
+    const subj=(text.match(/===SUBJECT===\s*([\s\S]*?)\s*===BODY===/)||[])[1]?.trim()||'';
+    const body=(text.match(/===BODY===\s*([\s\S]*?)\s*===DM===/)||[])[1]?.trim()||'';
+    const dm=(text.match(/===DM===\s*([\s\S]*?)\s*===END===/)||[])[1]?.trim()||'';
+    curP.emailDraft={subject:subj,body};curP.dmDraft=dm;
+    savePros();
+    document.getElementById('out-subj').textContent=subj;
+    document.getElementById('out-body').textContent=body;
+    document.getElementById('out-dm').textContent=dm;
+    out.style.display='block';
+  }catch(e){alert('エラー: '+e.message);}
+  btn.disabled=false;load.style.display='none';
+}
+function cpEmail(){
+  if(!curP?.emailDraft)return;
+  navigator.clipboard.writeText('件名: '+curP.emailDraft.subject+'\n\n'+curP.emailDraft.body);
+  const b=document.getElementById('cp-email');b.textContent='✓ コピー済';setTimeout(()=>b.textContent='コピー',2000);
+}
+function gmail(){
+  if(!curP?.emailDraft)return;
+  window.open('mailto:?subject='+encodeURIComponent(curP.emailDraft.subject)+'&body='+encodeURIComponent(curP.emailDraft.body));
+}
+function cpDm(){
+  if(!curP?.dmDraft)return;
+  navigator.clipboard.writeText(curP.dmDraft);
+  const b=document.getElementById('cp-dm');b.textContent='✓ コピー済';setTimeout(()=>b.textContent='コピー',2000);
+}
+function markSent(){
+  if(!curP)return;
+  curP.status='sent';if(!curP.sentAt)curP.sentAt=new Date().toISOString();
+  savePros();updateCSel();alert('送信済みにしました');
+}
+function renderCrm(){
+  const counts={total:pros.length,sent:pros.filter(p=>['sent','replied','negotiating','closed'].includes(p.status)).length,replied:pros.filter(p=>['replied','negotiating','closed'].includes(p.status)).length,closed:pros.filter(p=>p.status==='closed').length};
+  document.getElementById('met-row').innerHTML=[{v:counts.total,l:'総リスト'},{v:counts.sent,l:'送信済'},{v:counts.replied,l:'返信あり'},{v:counts.closed,l:'成約'}]
+    .map(m=>`<div class="met"><div class="met-v">${m.v}</div><div class="met-l">${m.l}</div></div>`).join('');
+  document.getElementById('ftabs').innerHTML=Object.entries({all:'すべて',...ST}).map(([k,v])=>
+    `<button class="ftab${filter===k?' on':''}" onclick="setFilter('${k}')">${v}${k!=='all'?' ('+pros.filter(p=>p.status===k).length+')':''}</button>`).join('');
+  const list=filter==='all'?pros:pros.filter(p=>p.status===filter);
+  const body=document.getElementById('crm-body');
+  if(!list.length){body.innerHTML='<div class="empty"><div class="empty-ic">📋</div>該当なし</div>';return;}
+  body.innerHTML=`<table class="tbl"><thead><tr><th>企業名</th><th>業種</th><th>ステータス</th><th>追加日</th><th>送信日</th><th>操作</th></tr></thead><tbody>
+    ${list.map(p=>`<tr>
+      <td><div style="font-weight:500">${p.name}</div>${p.address?`<div style="font-size:11px;color:var(--mu)">${p.address}</div>`:''}</td>
+      <td style="font-size:12px;color:var(--mu)">${p.category}</td>
+      <td><select style="width:auto;padding:4px 8px;font-size:12px" onchange="updSt('${p.id}',this.value)">
+        ${Object.entries(ST).map(([k,v])=>`<option value="${k}"${p.status===k?' selected':''}>${v}</option>`).join('')}
+      </select></td>
+      <td style="font-size:12px;color:var(--mu)">${p.addedAt.slice(5,10)}</td>
+      <td style="font-size:12px;color:var(--mu)">${p.sentAt?p.sentAt.slice(5,10):'-'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn sm" onclick="toCompose('${p.id}')">✏️</button>
+        <button class="btn sm red" onclick="delP('${p.id}')">🗑</button>
+      </div></td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+function setFilter(f){filter=f;renderCrm();}
+function updSt(id,st){
+  const p=pros.find(x=>x.id===id);if(!p)return;
+  p.status=st;if(st==='sent'&&!p.sentAt)p.sentAt=new Date().toISOString();
+  savePros();renderCrm();
+}
+function loadSettings(){
+  document.getElementById('key-inp').value=apiKey;
+  document.getElementById('places-inp').value=placesKey;
+  document.getElementById('s-co').value=cfg.co||'';
+  document.getElementById('s-name').value=cfg.name||'';
+  document.getElementById('s-email').value=cfg.email||'';
+  document.getElementById('s-tel').value=cfg.tel||'';
+  document.getElementById('s-svc').value=cfg.svc||'';
+  document.getElementById('s-str').value=cfg.str||'';
+}
+function saveKey(v){apiKey=v.trim();localStorage.setItem('ax_k',apiKey);updateApiSt();}
+function togKey(){const i=document.getElementById('key-inp');i.type=i.type==='password'?'text':'password';}
+function ss(k,v){cfg[k]=v;localStorage.setItem('ax_c',JSON.stringify(cfg));}
+function savePros(){localStorage.setItem('ax_p',JSON.stringify(pros));}
+
+// Email scraper
+async function scrapeEmail(){
+  const url=document.getElementById('f-url').value.trim();
+  if(!url){alert('先にWebサイトURLを入力してください');return;}
+  const btn=document.getElementById('scrape-btn');
+  const result=document.getElementById('scrape-result');
+  btn.disabled=true;btn.textContent='取得中...';result.textContent='';
+  try{
+    const r=await fetch('/api/scrape?url='+encodeURIComponent(url));
+    const d=await r.json();
+    if(d.emails&&d.emails.length>0){
+      document.getElementById('f-email').value=d.emails[0];
+      result.textContent=d.emails.length>1?'他にも見つかりました: '+d.emails.slice(1).join(', '):'HPから取得しました';
+      result.style.color='var(--green)';
+    }else{
+      result.textContent=d.error?'取得失敗: '+d.error:'メールアドレスが見つかりませんでした（手動入力してください）';
+      result.style.color='var(--mu)';
+    }
+  }catch(e){result.textContent='エラー: '+e.message;result.style.color='var(--red)';}
+  btn.disabled=false;btn.textContent='メール取得';
+}
+
+// Places API
+let placesKey = localStorage.getItem('ax_pk')||'';
+function savePlacesKey(v){placesKey=v.trim();localStorage.setItem('ax_pk',placesKey);}
+function togPlaces(){const i=document.getElementById('places-inp');i.type=i.type==='password'?'text':'password';}
+
+async function searchPlaces(){
+  const q=document.getElementById('map-q').value.trim();
+  if(!q)return;
+  const key=placesKey||apiKey; // fallback to Gemini key field if same key
+  if(!key){alert('設定タブでGoogle Places APIキーを入力してください');return;}
+  const btn=document.getElementById('search-btn');
+  const load=document.getElementById('search-load');
+  const err=document.getElementById('search-err');
+  const res=document.getElementById('search-results');
+  btn.disabled=true;load.style.display='flex';err.style.display='none';res.innerHTML='';
+  try{
+    const r=await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.businessStatus'},
+      body:JSON.stringify({textQuery:q,languageCode:'ja',maxResultCount:10})
+    });
+    if(!r.ok){const t=await r.text();throw new Error('HTTP '+r.status+': '+t.slice(0,200));}
+    const d=await r.json();
+    const places=(d.places||[]).filter(p=>p.businessStatus==='OPERATIONAL'||!p.businessStatus);
+    if(!places.length){res.innerHTML='<div style="font-size:13px;color:var(--mu);padding:10px 0">結果が見つかりませんでした</div>';return;}
+    const addedNames=new Set(pros.map(p=>p.name));
+    res.innerHTML='<div style="font-size:12px;color:var(--mu);margin:10px 0 8px">'+places.length+'件取得（実在の企業）</div>'+
+      places.map((p,i)=>{
+        const name=p.displayName?.text||'';
+        const addr=p.formattedAddress||'';
+        const tel=p.nationalPhoneNumber||'';
+        const url=p.websiteUri||'';
+        const rating=p.rating?'★'+p.rating+(p.userRatingCount?' ('+p.userRatingCount+'件)':''):'';
+        const added=addedNames.has(name);
+        return '<div style="background:var(--sur2);border:1px solid var(--b1);border-radius:var(--rl);padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
+          '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:500;font-size:14px;margin-bottom:2px">'+name+'</div>'+
+          '<div style="font-size:12px;color:var(--mu);margin-bottom:4px">'+addr+(rating?' · '+rating:'')+'</div>'+
+          (url?'<a href="'+url+'" target="_blank" style="font-size:11px">'+url.replace(/^https?:\/\//,'').slice(0,40)+'</a>':'')+
+          '</div>'+
+          '<button class="btn sm'+( added?' ghost':' pri')+'" '+( added?'disabled':'onclick="addPlace('+(JSON.stringify({name,addr,tel,url}).replace(/"/g,'&quot;'))+')"')+'>'+( added?'追加済':'追加')+'</button>'+
+          '</div>';
+      }).join('');
+  }catch(e){
+    err.textContent='エラー: '+e.message;err.style.display='block';
+  }
+  btn.disabled=false;load.style.display='none';
+}
+
+function addPlace(info){
+  if(pros.find(p=>p.name===info.name)){alert('すでに登録済みです');return;}
+  const cat=guessCat(info.name+' '+info.addr);
+  const p={
+    id:Date.now()+'',name:info.name,category:cat,
+    address:info.addr,tel:info.tel,url:info.url,email:'',memo:'',
+    issues:ISSUE_MAP[cat]?.slice(0,2)||[],
+    status:'new',addedAt:new Date().toISOString(),sentAt:null,emailDraft:null,dmDraft:''
+  };
+  pros.unshift(p);savePros();renderList();updateCSel();
+  // update button
+  document.querySelectorAll('#search-results button').forEach(btn=>{
+    if(btn.getAttribute('onclick')?.includes(info.name.slice(0,5))){
+      btn.textContent='追加済';btn.disabled=true;btn.className='btn sm ghost';
+    }
+  });
+}
+
+function guessCat(text){
+  const map={'整骨|整体|接骨|鍼灸':'整体・整骨院','美容|サロン|ヘア|hair':'美容室・サロン','飲食|レストラン|カフェ|ラーメン|寿司|焼肉|居酒屋':'飲食店','税理|会計|行政書士':'税理士・会計士','不動産|賃貸|売買':'不動産','クリニック|医院|歯科|整形':'クリニック・医院','塾|学習|スクール':'学習塾','フィットネス|ジム|ヨガ':'フィットネス','建設|工務|内装|リフォーム':'建設・工務店','運送|配送|物流':'運送業'};
+  for(const[k,v] of Object.entries(map)){if(new RegExp(k,'i').test(text))return v;}
+  return 'その他';
+}
+
+init();
+</script>
+</body>
+</html>
