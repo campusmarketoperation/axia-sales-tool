@@ -4,108 +4,102 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'url parameter required' });
+  if (!url) return res.status(400).json({ error: 'url required' });
 
-  // Validate URL
   let targetUrl;
   try {
     targetUrl = new URL(url);
-    if (!['http:', 'https:'].includes(targetUrl.protocol)) throw new Error('invalid protocol');
+    if (!['http:', 'https:'].includes(targetUrl.protocol)) throw new Error('invalid');
   } catch {
     return res.status(400).json({ error: 'Invalid URL' });
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36';
+  const HEADERS = { 'User-Agent': UA, 'Accept': 'text/html,*/*', 'Accept-Language': 'ja,en;q=0.9' };
 
-    const response = await fetch(targetUrl.toString(), {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'ja,en;q=0.9',
-      },
-    });
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      return res.status(200).json({ emails: [], error: `HTTP ${response.status}` });
-    }
-
-    const html = await response.text();
-
-    // Extract emails with multiple patterns
-    const emailPatterns = [
-      // Standard email pattern
-      /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,
-      // mailto: links
-      /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi,
-      // Obfuscated with spaces (e.g. "info @ example.com")
-      /[a-zA-Z0-9._%+\-]+\s*[@＠]\s*[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,
-    ];
-
+  function extractEmails(text) {
     const found = new Set();
 
-    for (const pattern of emailPatterns) {
-      const matches = html.match(pattern) || [];
-      matches.forEach(m => {
-        // Clean up
-        const clean = m.replace(/^mailto:/i, '').replace(/\s/g, '').toLowerCase();
-        // Filter out common false positives
-        if (
-          clean.includes('@') &&
-          !clean.includes('example.com') &&
-          !clean.includes('sentry.io') &&
-          !clean.includes('@2x') &&
-          !clean.includes('.png') &&
-          !clean.includes('.jpg') &&
-          !clean.includes('.gif') &&
-          !clean.includes('.svg') &&
-          !clean.match(/^\d/) &&
-          clean.length < 80
-        ) {
-          found.add(clean);
-        }
-      });
-    }
+    // 1. Standard
+    (text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [])
+      .forEach(e => found.add(e.toLowerCase()));
 
-    // Also try contact/inquiry page if no emails found
-    let contactEmails = [];
-    if (found.size === 0) {
-      const contactPaths = ['/contact', '/contact.html', '/inquiry', '/お問い合わせ', '/toiawase'];
-      for (const path of contactPaths) {
-        try {
-          const contactUrl = new URL(path, targetUrl.origin);
-          const cr = await fetch(contactUrl.toString(), {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            signal: AbortSignal.timeout(4000),
-          });
-          if (cr.ok) {
-            const ch = await cr.text();
-            const cm = ch.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [];
-            cm.forEach(m => {
-              const clean = m.toLowerCase();
-              if (!clean.includes('example') && clean.length < 80) contactEmails.push(clean);
-            });
-            if (contactEmails.length > 0) break;
-          }
-        } catch {}
+    // 2. Obfuscated [at] (at)
+    (text.match(/[a-zA-Z0-9._%+\-]+\s*[\[\(]?at[\]\)]?\s*[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/gi) || [])
+      .forEach(e => found.add(e.replace(/\s*[\[\(]?at[\]\)]?\s*/i, '@').toLowerCase()));
+
+    // 3. Full-width @
+    (text.match(/[a-zA-Z0-9._%+\-]+＠[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [])
+      .forEach(e => found.add(e.replace('＠', '@').toLowerCase()));
+
+    // 4. HTML entity decoded
+    const decoded = text
+      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    (decoded.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [])
+      .forEach(e => found.add(e.toLowerCase()));
+
+    // 5. mailto href
+    (text.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi) || [])
+      .forEach(e => found.add(e.replace(/^mailto:/i, '').toLowerCase()));
+
+    return [...found].filter(e =>
+      e.includes('@') && e.length < 80 &&
+      !e.match(/\.(png|jpg|gif|svg|webp|ico|css|js)$/i) &&
+      !e.includes('example.com') && !e.includes('yourdomain') &&
+      !e.includes('sentry') && !e.match(/^[0-9]/)
+    ).slice(0, 5);
+  }
+
+  async function fetchPage(url, timeout = 8000) {
+    try {
+      const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(timeout), redirect: 'follow' });
+      if (!r.ok) return null;
+      return r.text();
+    } catch { return null; }
+  }
+
+  try {
+    const mainHtml = await fetchPage(targetUrl.toString());
+    if (!mainHtml) return res.status(200).json({ emails: [], error: 'ページ取得失敗' });
+
+    let emails = extractEmails(mainHtml);
+
+    // Try contact/inquiry pages if no email found
+    if (emails.length === 0) {
+      const paths = [
+        '/contact', '/contact.html', '/contact/',
+        '/inquiry', '/inquiry.html',
+        '/about', '/about.html',
+        '/company', '/company.html',
+        '/toiawase', '/toiawase.html',
+        '/access', '/access.html',
+      ];
+      for (const path of paths) {
+        const html = await fetchPage(new URL(path, targetUrl.origin).toString(), 5000);
+        if (!html) continue;
+        const found = extractEmails(html);
+        if (found.length > 0) { emails = found; break; }
       }
     }
 
-    const allEmails = [...new Set([...found, ...contactEmails])].slice(0, 5);
-
-    return res.status(200).json({
-      emails: allEmails,
-      count: allEmails.length,
-      source: targetUrl.hostname,
-    });
-
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      return res.status(200).json({ emails: [], error: 'タイムアウト（8秒）' });
+    // Try links containing contact-related keywords
+    if (emails.length === 0) {
+      const links = (mainHtml.match(/href=["']([^"']*(?:contact|inquiry|toiawase|about|company)[^"']*)["']/gi) || []).slice(0, 5);
+      for (const lm of links) {
+        const href = lm.match(/href=["']([^"']+)["']/i)?.[1];
+        if (!href) continue;
+        try {
+          const html = await fetchPage(new URL(href, targetUrl.origin).toString(), 5000);
+          if (!html) continue;
+          const found = extractEmails(html);
+          if (found.length > 0) { emails = found; break; }
+        } catch { continue; }
+      }
     }
+
+    return res.status(200).json({ emails, count: emails.length, source: targetUrl.hostname });
+  } catch (err) {
     return res.status(200).json({ emails: [], error: err.message });
   }
 }
