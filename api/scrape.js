@@ -43,12 +43,28 @@ export default async function handler(req, res) {
     (text.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi) || [])
       .forEach(e => found.add(e.replace(/^mailto:/i, '').toLowerCase()));
 
-    return [...found].filter(e =>
-      e.includes('@') && e.length < 80 &&
-      !e.match(/\.(png|jpg|gif|svg|webp|ico|css|js)$/i) &&
-      !e.includes('example.com') && !e.includes('yourdomain') &&
-      !e.includes('sentry') && !e.match(/^[0-9]/)
-    ).slice(0, 5);
+    const VALID_TLDS = /\.(jp|com|net|org|co\.jp|or\.jp|ne\.jp|ac\.jp|go\.jp|io|info|biz|tokyo|osaka)$/i;
+    return [...found].filter(e => {
+      if (!e.includes('@')) return false;
+      if (e.length > 80 || e.length < 6) return false;
+      const [local, domain] = e.split('@');
+      if (!domain || !local) return false;
+      // Must have valid TLD
+      if (!VALID_TLDS.test(domain)) return false;
+      // Domain must have at least one dot
+      if (!domain.includes('.')) return false;
+      // Filter common false positives
+      if (e.match(/\.(png|jpg|gif|svg|webp|ico|css|js|ts|jsx|tsx|vue|php|html)(@|$)/i)) return false;
+      if (e.includes('example.com')) return false;
+      if (e.includes('yourdomain')) return false;
+      if (e.includes('sentry.io')) return false;
+      if (e.includes('alayer')) return false;
+      if (local.match(/^[0-9]/)) return false;
+      // Local part must be reasonable
+      if (local.length < 2) return false;
+      if (local.match(/^(noreply|no-reply|donotreply)$/i)) return false;
+      return true;
+    }).slice(0, 5);
   }
 
   async function fetchPage(url, timeout = 8000) {

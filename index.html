@@ -178,7 +178,10 @@ a:hover{text-decoration:underline}
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:12px;color:var(--mu)" id="list-count"></div>
-      <button class="btn pri sm" onclick="autoAll()" id="auto-btn">⚡ 未生成を一括生成</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn pri sm" onclick="autoAll()" id="auto-btn">⚡ 未生成を一括生成</button>
+        <button class="btn sm" onclick="bulkSend()" id="bulk-send-btn">📧 一括送信</button>
+      </div>
     </div>
     <div id="list-body"></div>
   </div>
@@ -222,7 +225,8 @@ a:hover{text-decoration:underline}
         </div>
         <div class="email-box" id="out-dm"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn pri sm" onclick="markSent()">✅ 送信済みにする</button>
+          <button class="btn pri sm" onclick="sendEmail()" id="send-email-btn">📧 メール送信</button>
+          <button class="btn sm" onclick="markSent()">✅ 送信済みにする</button>
           <button class="btn sm" onclick="go('crm')">CRM管理 →</button>
         </div>
       </div>
@@ -266,6 +270,23 @@ a:hover{text-decoration:underline}
       </div>
       <div class="field"><div class="lbl">提供サービス</div><input id="s-svc" oninput="ss('svc',this.value)" placeholder="LP制作、LINE構築、ChatGPT業務自動化、HP制作"></div>
       <div class="field"><div class="lbl">強み・特徴</div><textarea id="s-str" oninput="ss('str',this.value)" placeholder="大阪密着・AI特化・学生価格"></textarea></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">メール自動送信（Gmail）</div>
+      <div class="g2">
+        <div class="field">
+          <div class="lbl">送信元Gmailアドレス</div>
+          <input id="s-guser" oninput="ss('guser',this.value)" placeholder="axiaofficial.contact@gmail.com">
+        </div>
+        <div class="field">
+          <div class="lbl">Gmailアプリパスワード（16文字）</div>
+          <div class="key-wrap">
+            <input type="password" id="s-gpass" oninput="ss('gpass',this.value)" placeholder="xxxx xxxx xxxx xxxx">
+            <span class="key-tog" onclick="togGpass()">表示</span>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="margin-bottom:0">アプリパスワードは <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> で取得。2段階認証が必要です。</div>
     </div>
     <div class="note">設定はlocalStorageに自動保存されます。</div>
   </div>
@@ -315,15 +336,38 @@ function updateApiSt(){
   document.getElementById('api-dot').classList.toggle('ok',ok);
   document.getElementById('api-lbl').textContent=ok?'API接続済':'APIキー未設定';
 }
-async function callAI(prompt){
+async function callAI(prompt, retries=3){
   if(!apiKey)throw new Error('設定タブでGemini APIキーを入力してください');
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.8,maxOutputTokens:1500}})
-  });
-  if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
-  const d=await r.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  // Try gemini-2.5-flash first, fallback to gemini-2.0-flash on 503
+  const models=['gemini-2.5-flash','gemini-2.0-flash'];
+  let lastErr;
+  for(const model of models){
+    for(let i=0;i<retries;i++){
+      try{
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.8,maxOutputTokens:1500}})
+        });
+        if(r.status===503||r.status===429){
+          // Wait and retry
+          await new Promise(res=>setTimeout(res, (i+1)*3000));
+          lastErr=new Error(`HTTP ${r.status}`);
+          continue;
+        }
+        if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
+        const d=await r.json();
+        return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      }catch(e){
+        if(e.message.startsWith('HTTP 503')||e.message.startsWith('HTTP 429')){
+          lastErr=e;
+          await new Promise(res=>setTimeout(res,(i+1)*3000));
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+  throw lastErr||new Error('AIサービスが混雑しています。数分後に再試行してください。');
 }
 function openMaps(){
   const q=document.getElementById('map-q').value.trim()||'大阪 中小企業';
@@ -545,6 +589,8 @@ function updSt(id,st){
 function loadSettings(){
   document.getElementById('key-inp').value=apiKey;
   document.getElementById('places-inp').value=placesKey;
+  document.getElementById('s-guser').value=cfg.guser||'';
+  document.getElementById('s-gpass').value=cfg.gpass||'';
   document.getElementById('s-co').value=cfg.co||'';
   document.getElementById('s-name').value=cfg.name||'';
   document.getElementById('s-email').value=cfg.email||'';
@@ -558,6 +604,65 @@ function ss(k,v){cfg[k]=v;localStorage.setItem('ax_c',JSON.stringify(cfg));}
 function savePros(){localStorage.setItem('ax_p',JSON.stringify(pros));}
 
 // Auto generate for all prospects without drafts
+async function sendEmail(){
+  if(!curP?.emailDraft){alert('先に営業文を生成してください');return;}
+  if(!curP.email){alert('メールアドレスが登録されていません');return;}
+  if(!cfg.guser||!cfg.gpass){alert('設定タブでGmailアドレスとアプリパスワードを入力してください');return;}
+  const btn=document.getElementById('send-email-btn');
+  if(!confirm(`${curP.email} に送信しますか？`))return;
+  btn.disabled=true;btn.textContent='送信中...';
+  try{
+    const r=await fetch('/api/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        to:curP.email,
+        subject:curP.emailDraft.subject,
+        body:curP.emailDraft.body,
+        gmailUser:cfg.guser,
+        gmailPass:cfg.gpass.replace(/\s/g,''),
+      })
+    });
+    const d=await r.json();
+    if(d.success){
+      curP.status='sent';
+      if(!curP.sentAt)curP.sentAt=new Date().toISOString();
+      savePros();updateCSel();renderList();
+      alert('✅ 送信しました: '+curP.email);
+    }else{
+      alert('送信失敗: '+d.error);
+    }
+  }catch(e){alert('エラー: '+e.message);}
+  btn.disabled=false;btn.textContent='📧 メール送信';
+}
+
+// Bulk send all with email + draft
+async function bulkSend(){
+  const targets=pros.filter(p=>p.email&&p.emailDraft&&p.status==='new');
+  if(!targets.length){alert('送信可能な企業がありません（メールアドレス＋営業文が必要）');return;}
+  if(!cfg.guser||!cfg.gpass){alert('設定タブでGmailアドレスとアプリパスワードを入力してください');return;}
+  if(!confirm(targets.length+'社にメールを送信しますか？'))return;
+  let ok=0,fail=0;
+  for(let i=0;i<targets.length;i++){
+    const p=targets[i];
+    try{
+      const r=await fetch('/api/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({to:p.email,subject:p.emailDraft.subject,body:p.emailDraft.body,gmailUser:cfg.guser,gmailPass:cfg.gpass.replace(/\s/g,'')})
+      });
+      const d=await r.json();
+      if(d.success){
+        p.status='sent';if(!p.sentAt)p.sentAt=new Date().toISOString();ok++;
+      }else fail++;
+    }catch{fail++;}
+    savePros();
+    if(i<targets.length-1)await new Promise(r=>setTimeout(r,3000)); // 3sec interval
+  }
+  renderList();renderCrm();
+  alert(`完了！成功: ${ok}社 / 失敗: ${fail}社`);
+}
+
 async function autoAll(){
   const targets=pros.filter(p=>!p.emailDraft&&p.status==='new');
   if(!targets.length){alert('未生成の企業がありません');return;}
@@ -628,6 +733,7 @@ async function scrapeEmail(){
 let placesKey = localStorage.getItem('ax_pk')||'';
 function savePlacesKey(v){placesKey=v.trim();localStorage.setItem('ax_pk',placesKey);}
 function togPlaces(){const i=document.getElementById('places-inp');i.type=i.type==='password'?'text':'password';}
+function togGpass(){const i=document.getElementById('s-gpass');i.type=i.type==='password'?'text':'password';}
 
 async function searchPlaces(){
   const q=document.getElementById('map-q').value.trim();
