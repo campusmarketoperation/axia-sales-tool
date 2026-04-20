@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIA Sales Tool | AI営業自動化ツール</title>
+<meta name="description" content="Googleマップから中小企業を自動ピックアップ。AIが営業文を生成してメールを自動送信。月額3,980円。">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050506;
+  --sur: #0d0d10;
+  --sur2: #141418;
+  --sur3: #1c1c22;
+  --b1: rgba(255,255,255,.06);
+  --b2: rgba(255,255,255,.11);
+  --b3: rgba(255,255,255,.18);
+  --tx: #ebebea;
+  --mu: #666;
+  --mu2: #999;
+  --g: #22c55e;
+  --g2: #4ade80;
+  --g3: #86efac;
+  --glow: rgba(34,197,94,.15);
+  --glow2: rgba(34,197,94,.06);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: .4;
+}
+
+/* Nav */
+nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 40px; height: 60px;
+  border-bottom: 1px solid var(--b1);
+  position: sticky; top: 0;
+  background: rgba(5,5,6,.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  z-index: 100;
+}
+.n-logo {
+  font-family: 'DM Mono', monospace;
+  font-size: 15px; font-weight: 500;
+  color: var(--g2); letter-spacing: .08em;
+  display: flex; align-items: center; gap: 8px;
+}
+.n-logo::before {
+  content: '';
+  width: 7px; height: 7px;
+  background: var(--g);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--g);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.n-links { display: flex; align-items: center; gap: 28px; }
+.n-links a { color: var(--mu2); text-decoration: none; font-size: 13px; transition: color .15s; }
+.n-links a:hover { color: var(--tx); }
+.n-cta {
+  background: var(--g); color: #030f06 !important;
+  padding: 7px 18px; border-radius: 6px;
+  font-size: 13px; font-weight: 700;
+  transition: all .15s !important;
+}
+.n-cta:hover { background: var(--g2) !important; box-shadow: 0 0 20px var(--glow); }
+
+/* Hero */
+.hero {
+  position: relative;
+  padding: 120px 24px 100px;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 800px;
+  background: radial-gradient(ellipse, rgba(34,197,94,.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--sur2); border: 1px solid var(--b2);
+  border-radius: 20px; padding: 5px 14px 5px 8px;
+  font-size: 12px; color: var(--mu2);
+  margin-bottom: 32px;
+  letter-spacing: .02em;
+}
+.hero-eyebrow span {
+  background: var(--g); color: #030f06;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+  letter-spacing: .04em;
+}
+.hero h1 {
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  margin-bottom: 24px;
+}
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--g2) 0%, var(--g3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: clamp(15px, 2.5vw, 18px);
+  color: var(--mu2);
+  max-width: 520px;
+  margin: 0 auto 48px;
+  line-height: 1.8;
+  font-weight: 300;
+}
+.hero-btns {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.btn-main {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--g); color: #030f06;
+  padding: 14px 32px; border-radius: 8px;
+  font-size: 15px; font-weight: 700;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 0 0 0 var(--glow);
+}
+.btn-main:hover {
+  background: var(--g2);
+  box-shadow: 0 8px 32px var(--glow), 0 0 0 1px var(--g);
+  transform: translateY(-2px);
+}
+.btn-sub {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--sur2); color: var(--tx);
+  padding: 14px 32px; border-radius: 8px;
+  font-size: 15px; font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--b2);
+  transition: all .2s;
+}
+.btn-sub:hover { background: var(--sur3); border-color: var(--b3); transform: translateY(-1px); }
+.hero-note { font-size: 12px; color: var(--mu); }
+
+/* Marquee */
+.marquee-wrap {
+  border-top: 1px solid var(--b1);
+  border-bottom: 1px solid var(--b1);
+  padding: 14px 0;
+  background: var(--sur);
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+.marquee {
+  display: flex; gap: 48px;
+  animation: marquee 20s linear infinite;
+  width: max-content;
+}
+@keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.marquee-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--mu2); white-space: nowrap;
+  font-family: 'DM Mono', monospace;
+}
+.marquee-item::before {
+  content: '✦'; color: var(--g); font-size: 10px;
+}
+
+/* Section */
+.sec { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+.sec-label {
+  font-size: 11px; color: var(--g);
+  text-transform: uppercase; letter-spacing: .14em;
+  margin-bottom: 16px; text-align: center;
+  font-family: 'DM Mono', monospace;
+}
+.sec-title {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 800; text-align: center;
+  letter-spacing: -.02em;
+  margin-bottom: 14px; line-height: 1.15;
+}
+.sec-sub {
+  font-size: 16px; color: var(--mu2);
+  text-align: center; margin-bottom: 64px;
+  font-weight: 300; max-width: 480px;
+  margin-left: auto; margin-right: auto;
+}
+
+/* Flow */
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--b1);
+  border: 1px solid var(--b1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.flow-item {
+  background: var(--sur);
+  padding: 36px 28px;
+  position: relative;
+  transition: background .2s;
+}
+.flow-item:hover { background: var(--sur2); }
+.flow-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--g);
+  letter-spacing: .1em; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.flow-num::after {
+  content: ''; flex: 1;
+  height: 1px; background: var(--b2);
+}
+.flow-ic { font-size: 28px; margin-bottom: 14px; }
+.flow-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.flow-desc { font-size: 13px; color: var(--mu2); line-height: 1.7; }
+
+/* Features */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.feat-card {
+  background: var(--sur);
+  border: 1px solid var(--b1);
+  border-radius: 14px;
+  padding: 28px;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.feat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--g), transparent);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.feat-card:hover { border-color: var(--b2); transform: translateY(-3px); box-shadow: 0 20px 40px rgba(0,0,0,.4); }
+.feat-card:hover::before { opacity: 1; }
+.feat-ic {
+  width: 44px; height: 44px;
+  background: var(--glow2);
+  border: 1px solid rgba(34,197,94,.15);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 18px;
+}
+.feat-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.feat-desc { font-size: 13px; color: var(--mu2); line-height: 1.7; }
+
+/* Pricing */
+.price-card {
+  max-width: 440px; margin: 0 auto;
+  background: var(--sur);
+  border: 1px solid var(--b2);
+  border-radius: 20px;
+  padding: 44px 40px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 80px var(--glow2);
+}
+.price-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--g2), transparent);
+}
+.price-tag {
+  display: inline-block;
+  background: var(--g); color: #030f06;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 12px; border-radius: 10px;
+  letter-spacing: .06em; margin-bottom: 24px;
+}
+.price-amount {
+  font-family: 'DM Mono', monospace;
+  font-size: 60px; font-weight: 500;
+  line-height: 1; color: var(--tx);
+  margin-bottom: 4px;
+  display: flex; align-items: flex-end; gap: 4px;
+}
+.price-amount span { font-size: 20px; color: var(--mu2); margin-bottom: 8px; }
+.price-note { font-size: 13px; color: var(--mu); margin-bottom: 32px; }
+.price-list { list-style: none; margin-bottom: 36px; }
+.price-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--b1);
+  font-size: 14px; color: #ccc;
+}
+.price-list li:last-child { border-bottom: none; }
+.price-list li::before {
+  content: '✓';
+  color: var(--g);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.price-btn {
+  display: block; text-align: center;
+  background: var(--g); color: #030f06;
+  padding: 16px; border-radius: 10px;
+  font-size: 16px; font-weight: 700;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 0 30px var(--glow);
+}
+.price-btn:hover { background: var(--g2); box-shadow: 0 8px 40px var(--glow); transform: translateY(-1px); }
+.price-disclaimer { font-size: 12px; color: var(--mu); text-align: center; margin-top: 20px; line-height: 1.6; }
+
+/* FAQ */
+.faq-list { max-width: 680px; margin: 0 auto; }
+.faq-item {
+  border-bottom: 1px solid var(--b1);
+  padding: 24px 0;
+}
+.faq-q {
+  font-size: 15px; font-weight: 500;
+  margin-bottom: 10px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.faq-q::before {
+  content: 'Q';
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--g);
+  background: var(--glow2);
+  border: 1px solid rgba(34,197,94,.15);
+  border-radius: 4px;
+  padding: 1px 7px;
+  flex-shrink: 0; margin-top: 2px;
+}
+.faq-a { font-size: 13px; color: var(--mu2); line-height: 1.8; padding-left: 32px; }
+
+/* CTA */
+.cta-sec {
+  text-align: center;
+  padding: 100px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-sec::before {
+  content: '';
+  position: absolute;
+  bottom: -100px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(ellipse, rgba(34,197,94,.1) 0%, transparent 65%);
+  pointer-events: none;
+}
+.cta-sec h2 {
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 900; letter-spacing: -.03em;
+  margin-bottom: 16px; line-height: 1.1;
+}
+.cta-sec p { font-size: 16px; color: var(--mu2); margin-bottom: 40px; font-weight: 300; }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--b1);
+  padding: 28px 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+}
+.f-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--g2); letter-spacing: .08em; }
+.f-links { display: flex; gap: 20px; }
+.f-links a { font-size: 12px; color: var(--mu); text-decoration: none; transition: color .15s; }
+.f-links a:hover { color: var(--tx); }
+.f-copy { font-size: 12px; color: var(--mu); }
+
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .n-links a:not(.n-cta) { display: none; }
+  .flow-grid { grid-template-columns: 1fr 1fr; }
+  .feat-grid { grid-template-columns: 1fr; }
+  .price-card { padding: 32px 24px; }
+  footer { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+@media (max-width: 480px) {
+  .flow-grid { grid-template-columns: 1fr; }
+  .hero { padding: 80px 20px 60px; }
+  .price-amount { font-size: 48px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="n-logo">AXIA Sales</div>
+  <div class="n-links">
+    <a href="#features">機能</a>
+    <a href="#pricing">料金</a>
+    <a href="#faq">FAQ</a>
+    <a href="https://buy.stripe.com/00w00i9ag7hKfDceIL5kk01" class="n-cta">今すぐ始める</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-eyebrow">
+    <span>NEW</span> AI × 法人営業自動化ツール
+  </div>
+  <h1>
+    営業リスト作成から<br>
+    <em>メール送信まで全自動</em>
+  </h1>
+  <p class="hero-sub">
+    Googleマップから中小企業を自動ピックアップ。<br>
+    AIが課題を分析して営業文を生成。メールまで自動送信。
+  </p>
+  <div class="hero-btns">
+    <a href="https://buy.stripe.com/00w00i9ag7hKfDceIL5kk01" class="btn-main">
+      今すぐ始める →
+    </a>
+    <a href="/app/" class="btn-sub">
+      デモを見る
+    </a>
+  </div>
+  <p class="hero-note">月額¥3,980 · 初月無料 · いつでも解約可能</p>
+</section>
+
+<!-- Marquee -->
+<div class="marquee-wrap">
+  <div class="marquee">
+    <div class="marquee-item">企業リスト自動生成</div>
+    <div class="marquee-item">メールアドレス自動取得</div>
+    <div class="marquee-item">AI営業文生成</div>
+    <div class="marquee-item">Gmail自動送信</div>
+    <div class="marquee-item">CRM管理</div>
+    <div class="marquee-item">SNS DM文生成</div>
+    <div class="marquee-item">一括処理対応</div>
+    <div class="marquee-item">Google Places API連携</div>
+    <div class="marquee-item">企業リスト自動生成</div>
+    <div class="marquee-item">メールアドレス自動取得</div>
+    <div class="marquee-item">AI営業文生成</div>
+    <div class="marquee-item">Gmail自動送信</div>
+    <div class="marquee-item">CRM管理</div>
+    <div class="marquee-item">SNS DM文生成</div>
+    <div class="marquee-item">一括処理対応</div>
+    <div class="marquee-item">Google Places API連携</div>
+  </div>
+</div>
+
+<!-- Flow -->
+<section class="sec">
+  <div class="sec-label">How it works</div>
+  <div class="sec-title">4ステップで営業が完結する</div>
+  <div class="sec-sub">手動で1社30分かかる作業を、ボタン一つで全自動化</div>
+  <div class="flow-grid">
+    <div class="flow-item">
+      <div class="flow-num">01</div>
+      <div class="flow-ic">🗺️</div>
+      <div class="flow-title">企業を自動検索</div>
+      <div class="flow-desc">業種と地域を入力するだけ。Google Places APIで実在の中小企業を最大10件取得。チェーン・大手は除外。</div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">02</div>
+      <div class="flow-ic">📧</div>
+      <div class="flow-title">メールを自動取得</div>
+      <div class="flow-desc">企業HPを自動解析してメールアドレスを抽出。お問い合わせページも探索。見つからない場合はスキップ。</div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">03</div>
+      <div class="flow-ic">✨</div>
+      <div class="flow-title">AI営業文を生成</div>
+      <div class="flow-desc">各社の推定課題と自社の強みを掛け合わせてパーソナライズ。メール文・SNS DM文を同時生成。</div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">04</div>
+      <div class="flow-ic">⚡</div>
+      <div class="flow-title">自動で一括送信</div>
+      <div class="flow-desc">GmailのSMTPで全社に自動送信。返信・商談・成約をCRMで追跡管理。</div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="sec" id="features" style="padding-top:0">
+  <div class="sec-label">Features</div>
+  <div class="sec-title">必要な機能がすべて揃っている</div>
+  <div class="sec-sub">営業自動化に必要なものをワンツールに凝縮した</div>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-ic">🔍</div>
+      <div class="feat-title">Google Places AI検索</div>
+      <div class="feat-desc">Googleマップのデータから実在の中小企業・個人店をピックアップ。住所・電話番号・評価も自動取得。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ic">📬</div>
+      <div class="feat-title">HP メールアドレス解析</div>
+      <div class="feat-desc">企業HPを自動スクレイピングしてメールアドレスを抽出。難読化されたアドレスも検出。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ic">🤖</div>
+      <div class="feat-title">パーソナライズAI生成</div>
+      <div class="feat-desc">業種ごとの推定課題と自社サービスを掛け合わせて、相手に刺さる営業文を自動生成。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ic">📤</div>
+      <div class="feat-title">Gmail 自動送信</div>
+      <div class="feat-desc">自分のGmailから直接送信。スパム対策で3秒間隔の送信制御付き。送信後は自動でステータス更新。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ic">💬</div>
+      <div class="feat-title">SNS DM文も同時生成</div>
+      <div class="feat-desc">Instagram・X用のカジュアルなDM文もメールと同時に生成。ワンクリックでコピーして送信。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ic">📊</div>
+      <div class="feat-title">シンプルCRM</div>
+      <div class="feat-desc">未対応→送信済→返信あり→商談中→成約のステータスをドロップダウンで一元管理。</div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="sec" id="pricing" style="padding-top:0">
+  <div class="sec-label">Pricing</div>
+  <div class="sec-title">シンプルな料金</div>
+  <div class="sec-sub">全機能が使えるプラン1つのみ</div>
+  <div class="price-card">
+    <div class="price-tag">全機能込み · 初月無料</div>
+    <div class="price-amount">¥3,980<span>/月</span></div>
+    <p class="price-note">いつでも解約可能。縛り一切なし。</p>
+    <ul class="price-list">
+      <li>企業検索（Google Places API連携）</li>
+      <li>HPからメールアドレス自動取得</li>
+      <li>AI営業文生成（メール＋SNS DM）</li>
+      <li>全社一括生成・一括送信</li>
+      <li>Gmail自動送信機能</li>
+      <li>CRM管理（ステータス・履歴）</li>
+      <li>メールサポート</li>
+    </ul>
+    <a href="https://buy.stripe.com/00w00i9ag7hKfDceIL5kk01" class="price-btn">
+      今すぐ始める →
+    </a>
+    <p class="price-disclaimer">
+      ※ Google Places APIおよびGemini APIの利用料は別途Googleへのお支払いが発生する場合があります<br>（無料枠内であれば¥0）
+    </p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="padding-top:0">
+  <div class="sec-label">FAQ</div>
+  <div class="sec-title">よくある質問</div>
+  <div class="faq-list" style="margin-top:48px">
+    <div class="faq-item">
+      <div class="faq-q">APIキーは自分で用意する必要がありますか？</div>
+      <div class="faq-a">はい。Google Places API（企業検索）とGemini API（AI生成）のキーをGoogleで取得いただく必要があります。どちらも無料枠があり、個人利用レベルでは実質¥0でご利用いただけます。取得方法のマニュアルを購入後にお送りします。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">取得できる企業情報は本物ですか？</div>
+      <div class="faq-a">はい。Google Places APIを使用しているため、Googleマップに掲載されている実在の企業情報です。住所・電話番号・評価はGoogleのデータに基づきます。メールアドレスはHP自動解析のため取得率60〜80%程度です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">スパム扱いされませんか？</div>
+      <div class="faq-a">1日20〜30通程度に抑え、関連性の高い内容を送ることを推奨します。ツールは3秒間隔での送信制御を実装しています。送信内容と頻度の責任はユーザー様にあります。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">データはどこに保存されますか？</div>
+      <div class="faq-a">企業リスト・営業文・APIキーなどはすべてお使いのブラウザのlocalStorageに保存されます。当社のサーバーには送信されません。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">解約はいつでもできますか？</div>
+      <div class="faq-a">はい、いつでも解約可能です。解約後は当月末までご利用いただけます。月途中の日割り返金は行っておりません。</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-sec">
+  <h2>まず無料で<br>試してみる</h2>
+  <p>初月無料。設定5分。カード登録後すぐに使えます。</p>
+  <a href="https://buy.stripe.com/00w00i9ag7hKfDceIL5kk01" class="btn-main" style="font-size:17px;padding:18px 48px">
+    今すぐ始める →
+  </a>
+</section>
+
+<footer>
+  <div class="f-logo">AXIA</div>
+  <div class="f-links">
+    <a href="/tokushoho.html">特定商取引法</a>
+    <a href="/terms.html">利用規約</a>
+    <a href="/privacy.html">プライバシーポリシー</a>
+    <a href="mailto:axiaofficial.contact@gmail.com">お問い合わせ</a>
+  </div>
+  <div class="f-copy">© 2026 AXIA. All rights reserved.</div>
+</footer>
+
+</body>
+</html>
