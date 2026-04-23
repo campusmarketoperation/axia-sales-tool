@@ -347,7 +347,7 @@ a:hover{text-decoration:underline}
     <div class="card">
       <div style="font-size:13px;font-weight:500;margin-bottom:12px">Hunter.io APIキー（メール取得精度UP）</div>
       <div class="key-wrap">
-        <input type="password" id="s-hunter" oninput="ss('hunter',this.value)" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <input type="text" id="s-hunter" oninput="ss('hunter',this.value)" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
         <span class="key-tog" onclick="togHunter()">表示</span>
       </div>
       <div class="note" style="margin-bottom:0;margin-top:8px"><a href="https://hunter.io" target="_blank">hunter.io</a> で無料登録 → 月500件まで無料。Hunter.ioで取得できない場合はHP解析にフォールバックします。</div>
@@ -570,18 +570,17 @@ JSONのみを返し、説明文・マークダウン・コードブロックは�
   try{
     const text=await callAI(prompt);
     let subj='',body='',dm='',tel='';
-    try{
-      const st=text.indexOf('{'),en=text.lastIndexOf('}');
-      if(st>=0){
-        const parsed=JSON.parse(text.slice(st,en+1));
-        subj=parsed.subject||'';
-        body=parsed.body||'';
-        dm=parsed.dm||'';
-        tel=parsed.tel||'';
-      }
-    }catch{
-      // Fallback: split by newlines
-      const lines=text.replace(/```json|```/g,'').trim().split('\n').filter(l=>l.trim());
+    const extract=(tag,next)=>{
+      const re=new RegExp('\\['+tag+'\\]\\s*([\\s\\S]*?)\\s*\\['+next+'\\]');
+      return (text.match(re)||[])[1]?.trim()||'';
+    };
+    subj=extract('SUBJECT','BODY');
+    body=extract('BODY','DM');
+    dm=extract('DM','TEL');
+    tel=extract('TEL','END');
+    // Fallback if delimiter parse failed
+    if(!subj&&!body){
+      const lines=text.split('\n').filter(l=>l.trim()&&!l.startsWith('['));
       subj=lines[0]||'営業のご提案';
       body=lines.slice(1).join('\n').trim()||text;
     }
