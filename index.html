@@ -284,7 +284,7 @@ a:hover{text-decoration:underline}
     <div class="card">
       <div class="lbl" style="margin-bottom:5px">Gemini APIキー（営業文生成）</div>
       <div class="key-wrap" style="margin-bottom:14px">
-        <input type="password" id="key-inp" placeholder="AIzaSy..." oninput="saveKey(this.value)">
+        <input type="text" id="key-inp" placeholder="サーバーで管理しています" disabled style="opacity:.4">
         <span class="key-tog" onclick="togKey()">表示</span>
       </div>
       <div class="lbl" style="margin-bottom:5px">Google Places APIキー（企業検索）</div>
@@ -365,7 +365,7 @@ let apiKey=localStorage.getItem('ax_k')||'';
 let curP=null,filter='all',editId=null;
 
 function init(){
-  loadSettings();updateApiSt();renderFormTags('整体・整骨院');renderList();renderCrm();updateCSel();
+  loadSettings();renderFormTags('整体・整骨院');renderList();renderCrm();updateCSel();
 }
 function go(pg){
   NAVS.forEach((k,i)=>{
@@ -377,11 +377,7 @@ function go(pg){
   if(pg==='crm')renderCrm();
   if(pg==='compose')updateCSel();
 }
-function updateApiSt(){
-  const ok=apiKey&&apiKey.startsWith('AIza');
-  document.getElementById('api-dot').classList.toggle('ok',ok);
-  document.getElementById('api-lbl').textContent=ok?'API接続済':'APIキー未設定';
-}
+function updateApiSt(){} // server-managed
 async function callAI(prompt){
   // Check usage limit before calling
   if(currentUser&&currentPlan==='starter'){
@@ -628,7 +624,7 @@ function loadSettings(){
   document.getElementById('s-svc').value=cfg.svc||'';
   document.getElementById('s-str').value=cfg.str||'';
 }
-function saveKey(v){apiKey=v.trim();localStorage.setItem('ax_k',apiKey);updateApiSt();}
+function saveKey(v){apiKey=v.trim();localStorage.setItem('ax_k',apiKey);}
 function togKey(){const i=document.getElementById('key-inp');i.type=i.type==='password'?'text':'password';}
 function ss(k,v){cfg[k]=v;localStorage.setItem('ax_c',JSON.stringify(cfg));}
 function savePros(){
