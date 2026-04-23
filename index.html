@@ -565,9 +565,33 @@ SNS DM文（80字以内、カジュアル）
 ===END===`;
   try{
     const text=await callAI(prompt);
-    const subj=(text.match(/===SUBJECT===\s*([\s\S]*?)\s*===BODY===/)||[])[1]?.trim()||'';
-    const body=(text.match(/===BODY===\s*([\s\S]*?)\s*===DM===/)||[])[1]?.trim()||'';
-    const dm=(text.match(/===DM===\s*([\s\S]*?)\s*===END===/)||[])[1]?.trim()||'';
+    // Try delimiter parse first
+    let subj='',body='',dm='';
+    const subjMatch=text.match(/===SUBJECT===\s*([\s\S]*?)\s*===BODY===/);
+    const bodyMatch=text.match(/===BODY===\s*([\s\S]*?)\s*===DM===/);
+    const dmMatch=text.match(/===DM===\s*([\s\S]*?)\s*===END===/);
+    if(subjMatch&&bodyMatch){
+      subj=subjMatch[1].trim();
+      body=bodyMatch[1].trim();
+      dm=dmMatch?dmMatch[1].trim():'';
+    }else{
+      // Fallback: try JSON parse
+      try{
+        const st=text.indexOf('{'),en=text.lastIndexOf('}');
+        if(st>=0){
+          const parsed=JSON.parse(text.slice(st,en+1));
+          subj=parsed.subject||parsed.email?.subject||'';
+          body=parsed.body||parsed.email?.body||'';
+          dm=parsed.dm||'';
+        }
+      }catch{}
+      // Last resort: use whole text as body
+      if(!body){
+        const lines=text.split('\n').filter(l=>l.trim());
+        subj=lines[0]||'営業のご提案';
+        body=lines.slice(1).join('\n').trim()||text;
+      }
+    }
     curP.emailDraft={subject:subj,body};curP.dmDraft=dm;
     savePros();
     document.getElementById('out-subj').textContent=subj;
