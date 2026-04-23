@@ -35,6 +35,21 @@
   window._firebaseReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
+<script>
+// Global auth helpers (must be outside module)
+function doSignIn(){
+  if(window._fbSignIn)window._fbSignIn().catch(e=>alert('ログインエラー: '+e.message));
+  else alert('Firebase初期化中です。少し待ってから再試行してください。');
+}
+function doSignOut(){
+  if(window._fbSignOut)window._fbSignOut().then(()=>{
+    currentUser=null;idToken=null;currentPlan='starter';
+    document.getElementById('login-screen').style.display='flex';
+    document.querySelector('.sb').style.display='none';
+    document.querySelector('.main').style.display='none';
+  });
+}
+</script>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -635,17 +650,7 @@ function savePros(){
   }
 }
 
-// Auth
-async function doSignIn(){
-  try{await window._fbSignIn();}catch(e){alert('ログインエラー: '+e.message);}
-}
-async function doSignOut(){
-  await window._fbSignOut();
-  currentUser=null;idToken=null;currentPlan='starter';
-  document.getElementById('login-screen').style.display='flex';
-  document.querySelector('.sb').style.display='none';
-  document.querySelector('.main').style.display='none';
-}
+// Auth (doSignIn/doSignOut defined globally above)
 
 async function onAuthChange(user){
   if(user){
@@ -839,7 +844,15 @@ async function searchPlaces(){
   const load=document.getElementById('search-load');
   const err=document.getElementById('search-err');
   const res=document.getElementById('search-results');
-  btn.disabled=true;load.styl    const r=await fetch('/api/places',{
+  btn.disabled=true;load.style.display='flex';err.style.display='none';res.innerHTML='';
+  try{
+    // Check usage limit
+    if(currentUser&&currentPlan==='starter'){
+      const chk=await fetch('/api/usage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:currentUser.uid,action:'search',plan:currentPlan})});
+      const cd=await chk.json();
+      if(cd.error==='LIMIT_EXCEEDED'){err.textContent=cd.message;err.style.display='block';btn.disabled=false;load.style.display='none';return;}
+    }
+    const r=await fetch('/api/places',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({query:q})
