@@ -18,25 +18,18 @@ export default async function handler(req, res) {
 
   const { name, category, address, issues, memo, co, senderName, email, tel, svc, strengths } = promptData;
 
-  const prompt = `あなたは法人営業の専門家です。以下の企業への営業コンテンツを日本語で生成してください。
+  const prompt = `法人向け営業コンテンツを生成してください。
 
-企業名: ${name}
-業種: ${category}
-住所: ${address || '大阪'}
+企業: ${name}（${category}、${address || '大阪'}）
 課題: ${issues}
-補足: ${memo || 'なし'}
-自社名: ${co} / 担当: ${senderName} / ${email} / ${tel}
+自社: ${co} 担当:${senderName} ${email} ${tel}
 サービス: ${svc}
 強み: ${strengths}
 
-以下の4つをそれぞれ生成してください:
-1. メール件名（25字以内・自然な日本語）
-2. メール本文（250字前後・丁寧な敬語・末尾に署名）
-3. SNS DM文（80字以内・カジュアル）
-4. 電話トークスクリプト（150字前後・話し言葉・冒頭の挨拶から）
+以下のJSON形式で返してください。改行は\\nで表現してください:
+{"s":"件名20字以内","b":"本文200字・敬語","d":"DM60字","t":"電話スクリプト100字"}
 
-必ずこのJSON形式のみで返してください（説明文・コードブロック不要）:
-{"s":"件名","b":"本文","d":"DM","t":"電話スクリプト"}`;
+JSONのみ返してください。説明不要。`;
 
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastErr;
