@@ -545,52 +545,37 @@ async function generate(){
   btn.disabled=true;load.style.display='flex';out.style.display='none';
   const issues=(curP.issues||[]).join('、')||'デジタル化全般の遅れ';
   const memo=document.getElementById('c-memo').value;
-  const prompt=`あなたは法人向け営業のプロです。以下の情報で営業メールとSNS DMを作成してください。
+  const prompt=`以下の情報をもとに、法人向け営業メールとSNS DMをJSON形式で生成してください。
+JSONのみを返し、説明文・マークダウン・コードブロックは一切不要です。
 
 送り先: ${curP.name}（${curP.category}、${curP.address||''}）
 推定課題: ${issues}
-追加情報: ${memo||'特になし'}
-自社: ${cfg.co} / 担当: ${cfg.name} / ${cfg.email} / ${cfg.tel}
+追加情報: ${memo||'なし'}
+自社名: ${cfg.co}
+担当者: ${cfg.name}
+メール: ${cfg.email}
+電話: ${cfg.tel}
 サービス: ${cfg.svc}
 強み: ${cfg.str}
 
-以下のフォーマットで厳密に出力（余計な説明・マークダウン不要）:
-
-===SUBJECT===
-件名（30字以内）
-===BODY===
-メール本文（250〜350字、丁寧な敬語、最後に署名）
-===DM===
-SNS DM文（80字以内、カジュアル）
-===END===`;
+出力形式（このJSONのみ返すこと）:
+{"subject":"件名30字以内","body":"メール本文250字前後・丁寧な敬語・最後に署名","dm":"DM80字以内・カジュアル"}`;
   try{
     const text=await callAI(prompt);
-    // Try delimiter parse first
     let subj='',body='',dm='';
-    const subjMatch=text.match(/===SUBJECT===\s*([\s\S]*?)\s*===BODY===/);
-    const bodyMatch=text.match(/===BODY===\s*([\s\S]*?)\s*===DM===/);
-    const dmMatch=text.match(/===DM===\s*([\s\S]*?)\s*===END===/);
-    if(subjMatch&&bodyMatch){
-      subj=subjMatch[1].trim();
-      body=bodyMatch[1].trim();
-      dm=dmMatch?dmMatch[1].trim():'';
-    }else{
-      // Fallback: try JSON parse
-      try{
-        const st=text.indexOf('{'),en=text.lastIndexOf('}');
-        if(st>=0){
-          const parsed=JSON.parse(text.slice(st,en+1));
-          subj=parsed.subject||parsed.email?.subject||'';
-          body=parsed.body||parsed.email?.body||'';
-          dm=parsed.dm||'';
-        }
-      }catch{}
-      // Last resort: use whole text as body
-      if(!body){
-        const lines=text.split('\n').filter(l=>l.trim());
-        subj=lines[0]||'営業のご提案';
-        body=lines.slice(1).join('\n').trim()||text;
+    try{
+      const st=text.indexOf('{'),en=text.lastIndexOf('}');
+      if(st>=0){
+        const parsed=JSON.parse(text.slice(st,en+1));
+        subj=parsed.subject||'';
+        body=parsed.body||'';
+        dm=parsed.dm||'';
       }
+    }catch{
+      // Fallback: split by newlines
+      const lines=text.replace(/```json|```/g,'').trim().split('\n').filter(l=>l.trim());
+      subj=lines[0]||'営業のご提案';
+      body=lines.slice(1).join('\n').trim()||text;
     }
     curP.emailDraft={subject:subj,body};curP.dmDraft=dm;
     savePros();
