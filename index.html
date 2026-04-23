@@ -400,21 +400,20 @@ function go(pg){
 }
 function updateApiSt(){} // server-managed
 async function callAI(prompt){
-  // Check usage limit before calling
-  if(currentUser&&currentPlan==='starter'){
-    const chk=await fetch('/api/usage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:currentUser.uid,action:'generate',plan:currentPlan})});
-    const cd=await chk.json();
-    if(cd.error==='LIMIT_EXCEEDED')throw new Error(cd.message);
-  }
+  // Legacy: used by autoAll bulk generate
   const r=await fetch('/api/ai',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prompt,uid:currentUser?.uid,plan:currentPlan})
+    body:JSON.stringify({promptData:{
+      name:'',category:'',address:'',issues:prompt,memo:'',
+      co:cfg.co,senderName:cfg.name,email:cfg.email,tel:cfg.tel,
+      svc:cfg.svc,strengths:cfg.str
+    }})
   });
-  if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
   const d=await r.json();
   if(d.error)throw new Error(d.error);
-  return d.text||'';
+  return d.body||d.text||'';
 }
 function openMaps(){
   const q=document.getElementById('map-q').value.trim()||'大阪 中小企業';
