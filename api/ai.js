@@ -68,14 +68,22 @@ export default async function handler(req, res) {
         try {
           const clean = text.replace(/```json|```/g, '').trim();
           const st = clean.indexOf('{'), en = clean.lastIndexOf('}');
-          const parsed = JSON.parse(clean.slice(st, en + 1));
+          const jsonStr = clean.slice(st, en + 1);
+          // Fix unescaped newlines inside JSON string values
+          const fixedJson = jsonStr.replace(/:\s*"([\s\S]*?)"/g, (match, p1) => {
+            const escaped = p1.replace(/\n/g, '\\n').replace(/\r/g, '').replace(/\t/g, '\\t');
+            return ': "' + escaped + '"';
+          });
+          const parsed = JSON.parse(fixedJson);
           return res.status(200).json({
             subject: parsed.s || parsed.subject || '',
-            body: parsed.b || parsed.body || '',
-            dm: parsed.d || parsed.dm || '',
-            tel: parsed.t || parsed.tel || ''
+            body: (parsed.b || parsed.body || '').replace(/\\n/g, '\n'),
+            dm: (parsed.d || parsed.dm || '').replace(/\\n/g, '\n'),
+            tel: (parsed.t || parsed.tel || '').replace(/\\n/g, '\n')
           });
         } catch (parseErr) {
+          // Last resort: return raw text
+          console.error('Parse error:', parseErr.message, text.slice(0, 200));
           return res.status(200).json({ text, raw: true });
         }
       } catch (e) {
