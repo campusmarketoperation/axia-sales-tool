@@ -574,9 +574,21 @@ async function generate(){
     if(d.error)throw new Error(d.error);
     let subj='',body='',dm='',tel='';
     if(d.raw){
-      const lines=d.text.split('\n').filter(l=>l.trim());
-      subj=lines[0]||'営業のご提案';
-      body=lines.slice(1).join('\n').trim();
+      // Try to extract fields from raw text even if server parse failed
+      const t=d.text||'';
+      const extr=(key)=>{
+        const pattern=new RegExp('"'+key+'"\\s*:\\s*"');
+        const m=t.search(pattern);
+        if(m<0)return '';
+        const start=t.indexOf('"',m+key.length+3)+1;
+        let i=start;
+        while(i<t.length){if(t[i]==='\\'){ i+=2;continue;}if(t[i]==='"')break;i++;}
+        return t.slice(start,i).replace(/\\n/g,'\n');
+      };
+      subj=extr('s')||extr('subject')||'営業のご提案';
+      body=extr('b')||extr('body')||t;
+      dm=extr('d')||extr('dm')||'';
+      tel=extr('t')||extr('tel')||'';
     }else{
       subj=d.subject||'';body=d.body||'';dm=d.dm||'';tel=d.tel||'';
     }
