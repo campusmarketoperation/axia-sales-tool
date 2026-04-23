@@ -551,21 +551,6 @@ async function generate(){
   btn.disabled=true;load.style.display='flex';out.style.display='none';
   const issues=(curP.issues||[]).join('、')||'デジタル化全般の遅れ';
   const memo=document.getElementById('c-memo').value;
-  const prompt=`以下の情報をもとに、法人向け営業メールとSNS DMをJSON形式で生成してください。
-JSONのみを返し、説明文・マークダウン・コードブロックは一切不要です。
-
-送り先: ${curP.name}（${curP.category}、${curP.address||''}）
-推定課題: ${issues}
-追加情報: ${memo||'なし'}
-自社名: ${cfg.co}
-担当者: ${cfg.name}
-メール: ${cfg.email}
-電話: ${cfg.tel}
-サービス: ${cfg.svc}
-強み: ${cfg.str}
-
-出力形式（このJSONのみ返すこと）:
-{"subject":"件名25字以内","body":"メール本文250字・敬語・署名込み","dm":"SNS DM80字以内・カジュアル","tel":"電話トークスクリプト150字・話し言葉・冒頭の挨拶から"}`;
   const promptData={
     name:curP.name,category:curP.category,address:curP.address||'',
     issues,memo:memo||'なし',
