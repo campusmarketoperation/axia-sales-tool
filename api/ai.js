@@ -65,26 +65,37 @@ JSONのみ返してください。`;
         const d = await r.json();
         const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
         
-        // Parse JSON on server side
+        // Extract fields using simple string search
         try {
           const clean = text.replace(/```json|```/g, '').trim();
-          const st = clean.indexOf('{'), en = clean.lastIndexOf('}');
-          const jsonStr = clean.slice(st, en + 1);
-          // Fix unescaped newlines inside JSON string values
-          const fixedJson = jsonStr.replace(/:\s*"([\s\S]*?)"/g, (match, p1) => {
-            const escaped = p1.replace(/\n/g, '\\n').replace(/\r/g, '').replace(/\t/g, '\\t');
-            return ': "' + escaped + '"';
-          });
-          const parsed = JSON.parse(fixedJson);
-          return res.status(200).json({
-            subject: parsed.s || parsed.subject || '',
-            body: (parsed.b || parsed.body || '').replace(/\\n/g, '\n'),
-            dm: (parsed.d || parsed.dm || '').replace(/\\n/g, '\n'),
-            tel: (parsed.t || parsed.tel || '').replace(/\\n/g, '\n')
-          });
+          
+          // Find each field value between quotes after the key
+          const extract = (key) => {
+            const pattern = `"${key}"\\s*:\\s*"`;
+            const startIdx = clean.search(new RegExp(pattern));
+            if (startIdx < 0) return '';
+            const valStart = clean.indexOf('"', startIdx + key.length + 3) + 1;
+            // Find closing quote (not escaped)
+            let i = valStart;
+            while (i < clean.length) {
+              if (clean[i] === '\\') { i += 2; continue; }
+              if (clean[i] === '"') break;
+              i++;
+            }
+            return clean.slice(valStart, i).replace(/\\n/g, '\n');
+          };
+
+          const subject = extract('s') || extract('subject');
+          const body = extract('b') || extract('body');
+          const dm = extract('d') || extract('dm');
+          const tel = extract('t') || extract('tel');
+
+          if (subject || body) {
+            return res.status(200).json({ subject, body, dm, tel });
+          }
+          throw new Error('No fields extracted');
         } catch (parseErr) {
-          // Last resort: return raw text
-          console.error('Parse error:', parseErr.message, text.slice(0, 200));
+          console.error('Parse error:', parseErr.message, text.slice(0, 300));
           return res.status(200).json({ text, raw: true });
         }
       } catch (e) {
