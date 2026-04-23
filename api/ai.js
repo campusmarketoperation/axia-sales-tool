@@ -18,20 +18,28 @@ export default async function handler(req, res) {
 
   const { name, category, address, issues, memo, co, senderName, email, tel, svc, strengths } = promptData;
 
-  const prompt = `法人向け営業コンテンツを生成してください。
+  const prompt = `法人向け営業メールと営業ツールを日本語で生成してください。
 
-企業: ${name}（${category}、${address || '大阪'}）
-課題: ${issues}
-自社: ${co} 担当:${senderName} ${email} ${tel}
-サービス: ${svc}
+送り先企業: ${name}（${category}、${address || '大阪'}）
+推定課題: ${issues}
+自社情報: ${co} / 担当: ${senderName} / ${email} / ${tel}
+提供サービス: ${svc}
 強み: ${strengths}
+補足: ${memo || 'なし'}
 
-以下のJSON形式で返してください。改行は\\nで表現してください:
-{"s":"件名20字以内","b":"本文200字・敬語","d":"DM60字","t":"電話スクリプト100字"}
+【重要なルール】
+- 相手の課題や欠点を直接指摘しない（「〜が不足している」「〜の遅れ」などはNG）
+- 「貴社のさらなる発展に貢献できれば」という前向きな表現を使う
+- 飲食店・個人店には「貴社」ではなく「貴店」を使う
+- メール本文の最後に必ず署名を入れる（${senderName} / ${co} / ${email} / ${tel}）
+- カジュアルすぎず、丁寧すぎず、自然な敬語
 
-JSONのみ返してください。説明不要。`;
+以下のJSON形式で返してください（改行は\\nで表現・説明不要）:
+{"s":"件名20字以内","b":"本文200字・敬語・署名込み","d":"DM60字・カジュアル","t":"電話トークスクリプト100字・話し言葉"}
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+JSONのみ返してください。`;
+
+  const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastErr;
 
   for (const model of models) {
