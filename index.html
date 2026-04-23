@@ -4,6 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AXIA Sales Tool</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDiPs3caXe9EyWTV9yji6xEvfToF9JXTMQ",
+    authDomain: "axia-sales-tool.firebaseapp.com",
+    projectId: "axia-sales-tool",
+    storageBucket: "axia-sales-tool.firebasestorage.app",
+    messagingSenderId: "1043850330113",
+    appId: "1:1043850330113:web:0041cc619cd16e51dc0000"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  window._fbAuth = auth;
+  window._fbDb = db;
+  window._fbProvider = provider;
+  window._fbSignIn = () => signInWithPopup(auth, provider);
+  window._fbSignOut = () => signOut(auth);
+  window._fbOnAuth = (cb) => onAuthStateChanged(auth, cb);
+  window._fbGetDoc = (col, id) => getDoc(doc(db, col, id));
+  window._fbSetDoc = (col, id, data) => setDoc(doc(db, col, id), data, { merge: true });
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -112,8 +145,10 @@ a:hover{text-decoration:underline}
   <div class="nav" onclick="go('compose')"><span class="nav-ic">✉️</span>営業文生成</div>
   <div class="nav" onclick="go('crm')"><span class="nav-ic">📊</span>CRM管理</div>
   <div class="nav" onclick="go('settings')"><span class="nav-ic">⚙️</span>設定</div>
-  <div class="sb-foot">
-    <div class="api-st"><div class="dot" id="api-dot"></div><span id="api-lbl">APIキー未設定</span></div>
+  <div class="sb-foot" style="gap:8px;display:flex;flex-direction:column">
+    <div style="font-size:12px;color:var(--tx);font-weight:500" id="sb-user">未ログイン</div>
+    <div style="font-size:11px" id="sb-plan">Starter プラン</div>
+    <button onclick="doSignOut()" style="font-size:11px;color:var(--mu);background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:'Noto Sans JP',sans-serif">ログアウト</button>
   </div>
 </nav>
 
@@ -288,6 +323,14 @@ a:hover{text-decoration:underline}
       </div>
       <div class="note" style="margin-bottom:0">アプリパスワードは <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> で取得。2段階認証が必要です。</div>
     </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">Hunter.io APIキー（メール取得精度UP）</div>
+      <div class="key-wrap">
+        <input type="password" id="s-hunter" oninput="ss('hunter',this.value)" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <span class="key-tog" onclick="togHunter()">表示</span>
+      </div>
+      <div class="note" style="margin-bottom:0;margin-top:8px"><a href="https://hunter.io" target="_blank">hunter.io</a> で無料登録 → 月500件まで無料。Hunter.ioで取得できない場合はHP解析にフォールバックします。</div>
+    </div>
     <div class="note">設定はlocalStorageに自動保存されます。</div>
   </div>
 
@@ -313,6 +356,9 @@ const BC={new:'b-new',sent:'b-sent',replied:'b-replied',negotiating:'b-negotiati
 const PAGES={list:'p-list',compose:'p-compose',crm:'p-crm',settings:'p-settings'};
 const NAVS=['list','compose','crm','settings'];
 
+let currentUser=null;
+let currentPlan='starter';
+let idToken=null;
 let pros=JSON.parse(localStorage.getItem('ax_p')||'[]');
 let cfg={...{co:'AXIA',name:'谷屋 海斗',email:'axiaofficial.contact@gmail.com',tel:'090-6370-9528',svc:'LP制作、LINE構築、ChatGPT業務自動化、HP制作',str:'大阪を拠点とする学生エンジニアチームが、業界最安水準の価格でAI・Web制作を提供。'},...JSON.parse(localStorage.getItem('ax_c')||'{}')};
 let apiKey=localStorage.getItem('ax_k')||'';
@@ -336,38 +382,22 @@ function updateApiSt(){
   document.getElementById('api-dot').classList.toggle('ok',ok);
   document.getElementById('api-lbl').textContent=ok?'API接続済':'APIキー未設定';
 }
-async function callAI(prompt, retries=3){
-  if(!apiKey)throw new Error('設定タブでGemini APIキーを入力してください');
-  // Try gemini-2.5-flash first, fallback to gemini-2.0-flash on 503
-  const models=['gemini-2.5-flash','gemini-2.0-flash'];
-  let lastErr;
-  for(const model of models){
-    for(let i=0;i<retries;i++){
-      try{
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.8,maxOutputTokens:1500}})
-        });
-        if(r.status===503||r.status===429){
-          // Wait and retry
-          await new Promise(res=>setTimeout(res, (i+1)*3000));
-          lastErr=new Error(`HTTP ${r.status}`);
-          continue;
-        }
-        if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
-        const d=await r.json();
-        return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-      }catch(e){
-        if(e.message.startsWith('HTTP 503')||e.message.startsWith('HTTP 429')){
-          lastErr=e;
-          await new Promise(res=>setTimeout(res,(i+1)*3000));
-          continue;
-        }
-        throw e;
-      }
-    }
+async function callAI(prompt){
+  // Check usage limit before calling
+  if(currentUser&&currentPlan==='starter'){
+    const chk=await fetch('/api/usage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:currentUser.uid,action:'generate',plan:currentPlan})});
+    const cd=await chk.json();
+    if(cd.error==='LIMIT_EXCEEDED')throw new Error(cd.message);
   }
-  throw lastErr||new Error('AIサービスが混雑しています。数分後に再試行してください。');
+  const r=await fetch('/api/ai',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt,uid:currentUser?.uid,plan:currentPlan})
+  });
+  if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status}: ${t.slice(0,200)}`);}
+  const d=await r.json();
+  if(d.error)throw new Error(d.error);
+  return d.text||'';
 }
 function openMaps(){
   const q=document.getElementById('map-q').value.trim()||'大阪 中小企業';
@@ -424,7 +454,7 @@ function renderList(){
           <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${p.category}${p.address?' · '+p.address:''}${p.tel?' · '+p.tel:''}</div>
           <div>${(p.issues||[]).map(i=>`<span class="chip">${i}</span>`).join('')}</div>
           <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
-            ${p.email?`<span style="font-size:11px;color:var(--blue)">📧 ${p.email}</span>`:''}
+            ${p.email?`<span style="font-size:11px;color:var(--blue)">📧 ${p.email}</span>`:p.tel?`<span style="font-size:11px;color:var(--orange)">📞 ${p.tel}（メールなし）</span>`:`<span style="font-size:11px;color:var(--red)">メール・電話なし</span>`}
             ${p.emailDraft?`<span style="font-size:11px;color:var(--green)">✅ 営業文あり</span>`:`<span style="font-size:11px;color:var(--mu)">営業文未生成</span>`}
           </div>
         </div>
@@ -587,10 +617,10 @@ function updSt(id,st){
   savePros();renderCrm();
 }
 function loadSettings(){
-  document.getElementById('key-inp').value=apiKey;
-  document.getElementById('places-inp').value=placesKey;
+  // API keys now server-managed
   document.getElementById('s-guser').value=cfg.guser||'';
   document.getElementById('s-gpass').value=cfg.gpass||'';
+  document.getElementById('s-hunter').value=cfg.hunter||'';
   document.getElementById('s-co').value=cfg.co||'';
   document.getElementById('s-name').value=cfg.name||'';
   document.getElementById('s-email').value=cfg.email||'';
@@ -601,7 +631,72 @@ function loadSettings(){
 function saveKey(v){apiKey=v.trim();localStorage.setItem('ax_k',apiKey);updateApiSt();}
 function togKey(){const i=document.getElementById('key-inp');i.type=i.type==='password'?'text':'password';}
 function ss(k,v){cfg[k]=v;localStorage.setItem('ax_c',JSON.stringify(cfg));}
-function savePros(){localStorage.setItem('ax_p',JSON.stringify(pros));}
+function savePros(){
+  localStorage.setItem('ax_p',JSON.stringify(pros));
+  // Also save to Firestore if logged in
+  if(currentUser&&idToken){
+    fetch('/api/user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({pros})}).catch(()=>{});
+  }
+}
+
+// Auth
+async function doSignIn(){
+  try{await window._fbSignIn();}catch(e){alert('ログインエラー: '+e.message);}
+}
+async function doSignOut(){
+  await window._fbSignOut();
+  currentUser=null;idToken=null;currentPlan='starter';
+  document.getElementById('login-screen').style.display='flex';
+  document.querySelector('.sb').style.display='none';
+  document.querySelector('.main').style.display='none';
+}
+
+async function onAuthChange(user){
+  if(user){
+    currentUser=user;
+    idToken=await user.getIdToken();
+    document.getElementById('login-screen').style.display='none';
+    document.querySelector('.sb').style.display='flex';
+    document.querySelector('.main').style.display='block';
+    // Get plan from server
+    try{
+      const r=await fetch('/api/user',{headers:{'Authorization':'Bearer '+idToken}});
+      const d=await r.json();
+      currentPlan=d.plan||'starter';
+      // Load data from Firestore if available
+      if(d.pros&&d.pros.length>0){pros=d.pros;renderList();updateCSel();}
+      if(d.cfg){Object.assign(cfg,d.cfg);loadSettings();}
+    }catch(e){console.error(e);}
+    // Update sidebar user info
+    document.getElementById('sb-user').textContent=user.displayName||user.email;
+    document.getElementById('sb-plan').textContent=currentPlan==='pro'?'Pro プラン':'Starter プラン';
+    document.getElementById('sb-plan').style.color=currentPlan==='pro'?'var(--green)':'var(--mu)';
+    // Show usage
+    updateUsageBanner();
+  }else{
+    document.getElementById('login-screen').style.display='flex';
+    document.querySelector('.sb').style.display='none';
+    document.querySelector('.main').style.display='none';
+  }
+}
+
+async function updateUsageBanner(){
+  if(!currentUser||currentPlan==='pro'){document.getElementById('usage-banner').style.display='none';return;}
+  try{
+    const r=await fetch(`/api/usage?uid=${currentUser.uid}&plan=${currentPlan}`);
+    const d=await r.json();
+    document.getElementById('usage-text').textContent=`今月: 検索 ${d.searches}/30回 · 生成 ${d.generations}/30件`;
+    document.getElementById('usage-banner').style.display='flex';
+  }catch{}
+}
+
+// Wait for Firebase to load
+function waitForFirebase(){
+  return new Promise(resolve=>{
+    if(window._firebaseReady){resolve();}
+    else{window.addEventListener('firebase-ready',resolve,{once:true});}
+  });
+}
 
 // Auto generate for all prospects without drafts
 async function sendEmail(){
@@ -715,14 +810,17 @@ async function scrapeEmail(){
   const result=document.getElementById('scrape-result');
   btn.disabled=true;btn.textContent='取得中...';result.textContent='';
   try{
-    const r=await fetch('/api/scrape?url='+encodeURIComponent(url));
+    let endpoint='/api/email?url='+encodeURIComponent(url);
+    if(cfg.hunter)endpoint+='&hunterKey='+encodeURIComponent(cfg.hunter);
+    const r=await fetch(endpoint);
     const d=await r.json();
     if(d.emails&&d.emails.length>0){
       document.getElementById('f-email').value=d.emails[0];
-      result.textContent=d.emails.length>1?'他にも見つかりました: '+d.emails.slice(1).join(', '):'HPから取得しました';
+      const method=d.method?'['+d.method+'] ':'';
+      result.textContent=method+(d.emails.length>1?'他にも: '+d.emails.slice(1).join(', '):'取得しました');
       result.style.color='var(--green)';
     }else{
-      result.textContent=d.error?'取得失敗: '+d.error:'メールアドレスが見つかりませんでした（手動入力してください）';
+      result.textContent='メールアドレスが見つかりませんでした';
       result.style.color='var(--mu)';
     }
   }catch(e){result.textContent='エラー: '+e.message;result.style.color='var(--red)';}
@@ -734,6 +832,7 @@ let placesKey = localStorage.getItem('ax_pk')||'';
 function savePlacesKey(v){placesKey=v.trim();localStorage.setItem('ax_pk',placesKey);}
 function togPlaces(){const i=document.getElementById('places-inp');i.type=i.type==='password'?'text':'password';}
 function togGpass(){const i=document.getElementById('s-gpass');i.type=i.type==='password'?'text':'password';}
+function togHunter(){const i=document.getElementById('s-hunter');i.type=i.type==='password'?'text':'password';}
 
 async function searchPlaces(){
   const q=document.getElementById('map-q').value.trim();
@@ -758,11 +857,11 @@ async function searchPlaces(){
     const addedNames=new Set(pros.map(p=>p.name));
     res.innerHTML='<div style="font-size:12px;color:var(--mu);margin:10px 0 8px">'+places.length+'件取得（実在の企業）</div>'+
       places.map((p,i)=>{
-        const name=p.displayName?.text||'';
-        const addr=p.formattedAddress||'';
-        const tel=p.nationalPhoneNumber||'';
-        const url=p.websiteUri||'';
-        const rating=p.rating?'★'+p.rating+(p.userRatingCount?' ('+p.userRatingCount+'件)':''):'';
+        const name=p.name||'';
+        const addr=p.address||'';
+        const tel=p.tel||'';
+        const url=p.url||'';
+        const rating=p.rating?'★'+p.rating+(p.reviewCount?' ('+p.reviewCount+'件)':''):'';
         const added=addedNames.has(name);
         return '<div style="background:var(--sur2);border:1px solid var(--b1);border-radius:var(--rl);padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
           '<div style="flex:1;min-width:0">'+
@@ -800,7 +899,9 @@ async function addPlace(info){
   // Auto-scrape email if URL exists
   if(info.url){
     try{
-      const r=await fetch('/api/scrape?url='+encodeURIComponent(info.url));
+      let emailEndpoint='/api/email?url='+encodeURIComponent(info.url);
+    if(cfg.hunter)emailEndpoint+='&hunterKey='+encodeURIComponent(cfg.hunter);
+    const r=await fetch(emailEndpoint);
       const d=await r.json();
       if(d.emails&&d.emails.length>0){
         p.email=d.emails[0];
@@ -841,7 +942,36 @@ function guessCat(text){
   return 'その他';
 }
 
-init();
+(async()=>{
+  await waitForFirebase();
+  // Hide app until auth check
+  document.querySelector('.sb').style.display='none';
+  document.querySelector('.main').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  window._fbOnAuth(onAuthChange);
+  init();
+})();
 </script>
+
+<!-- Login Screen -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:var(--green);letter-spacing:.08em;margin-bottom:8px">AXIA</div>
+    <div style="font-size:13px;color:var(--mu)">Sales Tool</div>
+  </div>
+  <button onclick="doSignIn()" style="display:flex;align-items:center;gap:12px;background:var(--sur);border:1px solid var(--b2);border-radius:10px;padding:14px 28px;color:var(--tx);font-size:15px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='var(--sur)'">
+    <img src="https://www.google.com/favicon.ico" width="18" height="18">
+    Googleでログイン
+  </button>
+  <div style="font-size:12px;color:var(--mu);text-align:center;max-width:280px;line-height:1.7">
+    ログインすると<a href="/terms.html" target="_blank" style="color:var(--green)">利用規約</a>と<a href="/privacy.html" target="_blank" style="color:var(--green)">プライバシーポリシー</a>に同意したものとみなされます
+  </div>
+</div>
+
+<!-- Usage Banner -->
+<div id="usage-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--sur);border-top:1px solid var(--b1);padding:10px 24px;display:flex;justify-content:space-between;align-items:center;z-index:50;font-size:12px">
+  <span id="usage-text" style="color:var(--mu)"></span>
+  <a href="STRIPE_PRO_LINK" target="_blank" style="background:var(--green);color:#081a0e;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Proにアップグレード</a>
+</div>
 </body>
 </html>
