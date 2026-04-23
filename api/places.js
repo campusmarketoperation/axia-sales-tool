@@ -23,17 +23,18 @@ export default async function handler(req, res) {
     });
     if (!r.ok) { const t = await r.text(); throw new Error(`HTTP ${r.status}: ${t.slice(0, 200)}`); }
     const d = await r.json();
-    const places = (d.places || [])
+    const rawPlaces = d.places || [];
+    const places = rawPlaces
       .filter(p => p.businessStatus === 'OPERATIONAL' || !p.businessStatus)
       .map(p => ({
-        name: p.displayName?.text || '',
-        address: p.formattedAddress || '',
-        tel: p.nationalPhoneNumber || '',
-        url: p.websiteUri || '',
+        name: p.displayName?.text || p.name || '',
+        address: p.formattedAddress || p.shortFormattedAddress || '',
+        tel: p.nationalPhoneNumber || p.internationalPhoneNumber || '',
+        url: p.websiteUri || p.googleMapsUri || '',
         rating: p.rating || null,
-        reviewCount: p.userRatingCount || 0
+        reviewCount: p.userRatingCount || p.userRatingsTotal || 0
       }));
-    return res.status(200).json({ places });
+    return res.status(200).json({ places, debug: rawPlaces[0] ? Object.keys(rawPlaces[0]) : [] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
