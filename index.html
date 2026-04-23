@@ -274,6 +274,12 @@ a:hover{text-decoration:underline}
           <button class="btn sm" id="cp-dm" onclick="cpDm()">コピー</button>
         </div>
         <div class="email-box" id="out-dm"></div>
+        <hr style="border:none;border-top:1px solid var(--b1);margin:18px 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:500">📞 電話トークスクリプト</div>
+          <button class="btn sm" id="cp-tel" onclick="cpTel()">コピー</button>
+        </div>
+        <div class="email-box" id="out-tel" style="font-size:13px;line-height:2"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn pri sm" onclick="sendEmail()" id="send-email-btn">📧 メール送信</button>
           <button class="btn sm" onclick="markSent()">✅ 送信済みにする</button>
@@ -445,7 +451,7 @@ function saveProspect(){
     tel:document.getElementById('f-tel').value.trim(),
     url:document.getElementById('f-url').value.trim(),
     memo:document.getElementById('f-memo').value.trim(),
-    issues,email:document.getElementById('f-email').value.trim(),status:'new',addedAt:new Date().toISOString(),sentAt:null,emailDraft:null,dmDraft:''
+    issues,email:document.getElementById('f-email').value.trim(),status:'new',addedAt:new Date().toISOString(),sentAt:null,emailDraft:null,dmDraft:'',telScript:''
   };
   if(editId){pros=pros.map(x=>x.id===editId?p:x);}else{pros.unshift(p);}
   savePros();renderList();updateCSel();toggleForm();editId=null;
@@ -530,6 +536,7 @@ function selectP(id){
     document.getElementById('out-subj').textContent=p.emailDraft.subject||'';
     document.getElementById('out-body').textContent=p.emailDraft.body||'';
     document.getElementById('out-dm').textContent=p.dmDraft||'';
+    document.getElementById('out-tel').textContent=p.telScript||'';
     out.style.display='block';
   }else out.style.display='none';
 }
@@ -577,11 +584,13 @@ JSONのみを返し、説明文・マークダウン・コードブロックは�
       subj=lines[0]||'営業のご提案';
       body=lines.slice(1).join('\n').trim()||text;
     }
-    curP.emailDraft={subject:subj,body};curP.dmDraft=dm;
+    const tel=parsed?.tel||'';
+    curP.emailDraft={subject:subj,body};curP.dmDraft=dm;curP.telScript=tel;
     savePros();
     document.getElementById('out-subj').textContent=subj;
     document.getElementById('out-body').textContent=body;
     document.getElementById('out-dm').textContent=dm;
+    document.getElementById('out-tel').textContent=tel;
     out.style.display='block';
   }catch(e){alert('エラー: '+e.message);}
   btn.disabled=false;load.style.display='none';
@@ -599,6 +608,11 @@ function cpDm(){
   if(!curP?.dmDraft)return;
   navigator.clipboard.writeText(curP.dmDraft);
   const b=document.getElementById('cp-dm');b.textContent='✓ コピー済';setTimeout(()=>b.textContent='コピー',2000);
+}
+function cpTel(){
+  if(!curP?.telScript)return;
+  navigator.clipboard.writeText(curP.telScript);
+  const b=document.getElementById('cp-tel');b.textContent='✓ コピー済';setTimeout(()=>b.textContent='コピー',2000);
 }
 function markSent(){
   if(!curP)return;
