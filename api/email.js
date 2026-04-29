@@ -51,14 +51,25 @@ export default async function handler(req, res) {
     (text.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi) || [])
       .forEach(e => found.add(e.replace(/^mailto:/i, '').toLowerCase()));
 
+    const JUNK_DOMAINS = [
+      'example.com','yourdomain','sentry.io','alayer','wixpress',
+      'cloudflare','cloudflarein','addtoany','googleapis','gstatic',
+      'fonts.gst','ic.com','w3.org','schema.org','jquery',
+      'bootstrapcdn','fontawesome','unpkg.com','jsdelivr',
+      'gravatar','wordpress.com','wp.com','shopify.com',
+      'squarespace.com','wix.com','jimdo.com','amazonaws',
+      'sentry','bugsnag','datadog','newrelic','segment.io',
+    ];
     return [...found].filter(e => {
       if (!e.includes('@') || e.length > 80 || e.length < 6) return false;
       const [local, domain] = e.split('@');
       if (!domain || !local || !domain.includes('.')) return false;
       if (!VALID_TLDS.test(domain)) return false;
       if (e.match(/\.(png|jpg|gif|svg|webp|ico|css|js|ts|jsx|tsx|vue|php|html)(@|$)/i)) return false;
-      if (['example.com','yourdomain','sentry.io','alayer','wixpress'].some(x => e.includes(x))) return false;
+      if (JUNK_DOMAINS.some(x => domain.includes(x))) return false;
       if (local.length < 2 || local.match(/^[0-9]/)) return false;
+      // local part should look like a real email (not random chars)
+      if (local.length <= 2 && !['pr','hr','cs','biz','web','info','mail','contact','support','admin','sales','hello','hi','we','me','ko'].includes(local)) return false;
       return true;
     }).slice(0, 5);
   }
