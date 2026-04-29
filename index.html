@@ -301,32 +301,32 @@ a:hover{text-decoration:underline}
   <!-- 設定 -->
   <div class="page" id="p-settings">
     <div class="ph">設定</div>
-    <div class="ps">APIキーと自社情報を入力してください</div>
-    <div class="card">
-      <div class="lbl" style="margin-bottom:5px">Gemini APIキー（営業文生成）</div>
-      <div class="key-wrap" style="margin-bottom:14px">
-        <input type="text" id="key-inp" placeholder="サーバーで管理しています" disabled style="opacity:.4">
-        <span class="key-tog" onclick="togKey()">表示</span>
+    <div class="ps">自社情報とメール送信設定を入力してください</div>
+
+    <!-- API状態表示 -->
+    <div class="card" style="border-color:rgba(74,222,128,.2)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:500">AIエンジン</span>
+        <span style="font-size:11px;background:rgba(74,222,128,.15);color:var(--green);padding:2px 8px;border-radius:4px">OpenAI GPT-4o-mini</span>
+        <span style="font-size:11px;background:rgba(74,222,128,.15);color:var(--green);padding:2px 8px;border-radius:4px">サーバー管理</span>
       </div>
-      <div class="lbl" style="margin-bottom:5px">Google Places APIキー（企業検索）</div>
-      <div class="key-wrap">
-        <input type="password" id="places-inp" placeholder="AIzaSy..." oninput="savePlacesKey(this.value)">
-        <span class="key-tog" onclick="togPlaces()">表示</span>
-      </div>
-      <div style="font-size:12px;color:var(--mu);margin-top:6px">
-        Google Cloud Console → Places API (New) を有効化してAPIキーを取得。同じキーでもOK。チャットには貼らないこと。
-      </div>
+      <div style="font-size:13px;color:var(--mu);line-height:1.7">OpenAI API・Google Places API・Hunter.ioはAXIAサーバーで一括管理しています。APIキーの設定は不要です。</div>
     </div>
+
+    <!-- 自社情報 -->
     <div class="card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">自社情報（営業文生成に使用）</div>
       <div class="g2">
         <div class="field"><div class="lbl">会社名</div><input id="s-co" oninput="ss('co',this.value)" placeholder="AXIA"></div>
         <div class="field"><div class="lbl">担当者名</div><input id="s-name" oninput="ss('name',this.value)" placeholder="谷屋 海斗"></div>
-        <div class="field"><div class="lbl">メールアドレス</div><input id="s-email" oninput="ss('email',this.value)"></div>
-        <div class="field"><div class="lbl">電話番号</div><input id="s-tel" oninput="ss('tel',this.value)"></div>
+        <div class="field"><div class="lbl">メールアドレス</div><input id="s-email" oninput="ss('email',this.value)" placeholder="axiaofficial.contact@gmail.com"></div>
+        <div class="field"><div class="lbl">電話番号</div><input id="s-tel" oninput="ss('tel',this.value)" placeholder="090-6370-9528"></div>
       </div>
       <div class="field"><div class="lbl">提供サービス</div><input id="s-svc" oninput="ss('svc',this.value)" placeholder="LP制作、LINE構築、ChatGPT業務自動化、HP制作"></div>
-      <div class="field"><div class="lbl">強み・特徴</div><textarea id="s-str" oninput="ss('str',this.value)" placeholder="大阪密着・AI特化・学生価格"></textarea></div>
+      <div class="field"><div class="lbl">強み・特徴</div><textarea id="s-str" oninput="ss('str',this.value)" placeholder="大阪密着・AI特化・学生価格・伴走サポート"></textarea></div>
     </div>
+
+    <!-- Gmail送信 -->
     <div class="card">
       <div style="font-size:13px;font-weight:500;margin-bottom:12px">メール自動送信（Gmail）</div>
       <div class="g2">
@@ -344,14 +344,22 @@ a:hover{text-decoration:underline}
       </div>
       <div class="note" style="margin-bottom:0">アプリパスワードは <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> で取得。2段階認証が必要です。</div>
     </div>
+
+    <!-- プラン情報 -->
     <div class="card">
-      <div style="font-size:13px;font-weight:500;margin-bottom:12px">Hunter.io APIキー（メール取得精度UP）</div>
-      <div class="key-wrap">
-        <input type="text" id="s-hunter" oninput="ss('hunter',this.value)" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-        <span class="key-tog" onclick="togHunter()">表示</span>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">現在のプラン</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span id="plan-badge" style="font-size:13px;font-weight:500;color:var(--green)"></span>
+        <a href="https://www.axia-sales-tool.site/lp.html#pricing" target="_blank" style="font-size:12px;color:var(--blue)">プランを変更 →</a>
       </div>
-      <div class="note" style="margin-bottom:0;margin-top:8px"><a href="https://hunter.io" target="_blank">hunter.io</a> で無料登録 → 月500件まで無料。Hunter.ioで取得できない場合はHP解析にフォールバックします。</div>
+      <div style="font-size:12px;color:var(--mu)">プランのアップグレード・解約はStripeのカスタマーポータルから行えます。</div>
     </div>
+
+    <!-- 非表示の旧フィールド（JS互換用） -->
+    <input type="hidden" id="key-inp">
+    <input type="hidden" id="places-inp">
+    <input type="hidden" id="s-hunter">
+
     <div class="note">設定はlocalStorageに自動保存されます。</div>
   </div>
 
@@ -704,6 +712,8 @@ async function onAuthChange(user){
     const planColors={'starter':'var(--mu2)','pro':'var(--green)','business':'var(--yellow)','free':'var(--red)'};
     document.getElementById('sb-plan').textContent=planLabels[currentPlan]||'Starter プラン';
     document.getElementById('sb-plan').style.color=planColors[currentPlan]||'var(--mu)';
+    const planBadge=document.getElementById('plan-badge');
+    if(planBadge)planBadge.textContent=planLabels[currentPlan]||'Starter プラン';
     // Show bulk generate only for Pro
     const autoBtn=document.getElementById('auto-btn');
     if(autoBtn)autoBtn.style.display=['pro','business'].includes(currentPlan)?'inline-flex':'none';
