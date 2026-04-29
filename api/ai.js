@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 - メール本文の末尾に必ず署名を入れる
 
 以下のJSON形式のみで返してください:
-{"s":"件名20字以内","b":"メール本文200字・敬語・署名込み","d":"SNS DM60字・カジュアル","t":"電話スクリプト100字・話し言葉"}`;
+{"s":"件名25字以内","b":"メール本文350〜450字・丁寧な敬語・課題への共感→自社紹介→提案→CTA→署名の流れで","d":"SNS DM100字・カジュアル・親しみやすい","t":"電話スクリプト200字・話し言葉・冒頭挨拶から断られにくい流れで"}`;
 
   try {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 1500,
         response_format: { type: 'json_object' }
       })
     });
