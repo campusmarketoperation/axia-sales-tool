@@ -5,6 +5,7 @@
   "dependencies": {
     "nodemailer": "^6.9.9",
     "firebase-admin": "^12.0.0",
-    "stripe": "^14.0.0"
+    "stripe": "^14.0.0",
+    "openai": "^4.0.0"
   }
 }

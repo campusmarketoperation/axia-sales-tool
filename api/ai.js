@@ -13,100 +13,67 @@ export default async function handler(req, res) {
   const { promptData } = body;
   if (!promptData) return res.status(400).json({ error: 'promptData required' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Server API key not configured' });
 
   const { name, category, address, issues, memo, co, senderName, email, tel, svc, strengths } = promptData;
 
-  const prompt = `法人向け営業メールと営業ツールを日本語で生成してください。
+  const prompt = `法人向け営業コンテンツを日本語で生成してください。
 
-送り先企業: ${name}（${category}、${address || '大阪'}）
+送り先: ${name}（${category}、${address || '大阪'}）
 推定課題: ${issues}
-自社情報: ${co} / 担当: ${senderName} / ${email} / ${tel}
-提供サービス: ${svc}
-強み: ${strengths}
 補足: ${memo || 'なし'}
+自社: ${co} / 担当: ${senderName} / ${email} / ${tel}
+サービス: ${svc}
+強み: ${strengths}
 
-【重要なルール】
-- 相手の課題や欠点を直接指摘しない（「〜が不足している」「〜の遅れ」などはNG）
-- 「貴社のさらなる発展に貢献できれば」という前向きな表現を使う
-- 飲食店・個人店には「貴社」ではなく「貴店」を使う
-- メール本文の最後に必ず署名を入れる（${senderName} / ${co} / ${email} / ${tel}）
-- カジュアルすぎず、丁寧すぎず、自然な敬語
+【ルール】
+- 相手の課題を直接指摘しない（「〜が不足」「〜の遅れ」はNG）
+- 飲食・小売の個人店には「貴店」、それ以外は「貴社」を使う
+- メール本文の末尾に必ず署名を入れる
 
-以下のJSON形式で返してください（改行は\\nで表現・説明不要）:
-{"s":"件名20字以内","b":"本文200字・敬語・署名込み","d":"DM60字・カジュアル","t":"電話トークスクリプト100字・話し言葉"}
+以下のJSON形式のみで返してください:
+{"s":"件名20字以内","b":"メール本文200字・敬語・署名込み","d":"SNS DM60字・カジュアル","t":"電話スクリプト100字・話し言葉"}`;
 
-JSONのみ返してください。`;
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'あなたは法人営業の専門家です。指定されたJSON形式のみで返答してください。説明文・コードブロック不要。' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' }
+      })
+    });
 
-  const models = ['gemini-2.5-flash'];
-  let lastErr;
-
-  for (const model of models) {
-    for (let i = 0; i < 3; i++) {
-      try {
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
-            })
-          }
-        );
-        if (r.status === 503 || r.status === 429) {
-          await new Promise(resolve => setTimeout(resolve, (i + 1) * 3000));
-          lastErr = new Error(`HTTP ${r.status}`);
-          continue;
-        }
-        if (!r.ok) { const t = await r.text(); throw new Error(`HTTP ${r.status}: ${t.slice(0, 200)}`); }
-        const d = await r.json();
-        const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        
-        // Extract fields using simple string search
-        try {
-          const clean = text.replace(/```json|```/g, '').trim();
-          
-          // Find each field value between quotes after the key
-          const extract = (key) => {
-            const pattern = `"${key}"\\s*:\\s*"`;
-            const startIdx = clean.search(new RegExp(pattern));
-            if (startIdx < 0) return '';
-            const valStart = clean.indexOf('"', startIdx + key.length + 3) + 1;
-            // Find closing quote (not escaped)
-            let i = valStart;
-            while (i < clean.length) {
-              if (clean[i] === '\\') { i += 2; continue; }
-              if (clean[i] === '"') break;
-              i++;
-            }
-            return clean.slice(valStart, i).replace(/\\n/g, '\n');
-          };
-
-          const subject = extract('s') || extract('subject');
-          const body = extract('b') || extract('body');
-          const dm = extract('d') || extract('dm');
-          const tel = extract('t') || extract('tel');
-
-          if (subject || body) {
-            return res.status(200).json({ subject, body, dm, tel });
-          }
-          throw new Error('No fields extracted');
-        } catch (parseErr) {
-          console.error('Parse error:', parseErr.message, text.slice(0, 300));
-          return res.status(200).json({ text, raw: true });
-        }
-      } catch (e) {
-        if (e.message.startsWith('HTTP 503') || e.message.startsWith('HTTP 429')) {
-          lastErr = e;
-          await new Promise(resolve => setTimeout(resolve, (i + 1) * 3000));
-          continue;
-        }
-        throw e;
-      }
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status}: ${t.slice(0, 200)}`);
     }
+
+    const d = await r.json();
+    const text = d.choices?.[0]?.message?.content || '';
+
+    try {
+      const parsed = JSON.parse(text);
+      return res.status(200).json({
+        subject: parsed.s || parsed.subject || '',
+        body: parsed.b || parsed.body || '',
+        dm: parsed.d || parsed.dm || '',
+        tel: parsed.t || parsed.tel || ''
+      });
+    } catch {
+      return res.status(200).json({ text, raw: true });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
-  return res.status(503).json({ error: lastErr?.message || 'AI service unavailable' });
 }
