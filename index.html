@@ -755,6 +755,16 @@ async function onAuthChange(user){
       // Load data from Firestore if available
       if(d.pros&&d.pros.length>0){pros=d.pros;renderList();updateCSel();}
       if(d.cfg){Object.assign(cfg,d.cfg);loadSettings();}
+      // Update sidebar
+      document.getElementById('sb-user').textContent=user.displayName||user.email;
+      const planLabels={'starter':'Starter プラン','pro':'Pro プラン','business':'Business プラン','free':'未加入'};
+      const planColors={'starter':'var(--mu2)','pro':'var(--green)','business':'var(--yellow)','free':'var(--red)'};
+      document.getElementById('sb-plan').textContent=planLabels[currentPlan]||'Starter プラン';
+      document.getElementById('sb-plan').style.color=planColors[currentPlan]||'var(--mu)';
+      const planBadge=document.getElementById('plan-badge');
+      if(planBadge)planBadge.textContent=planLabels[currentPlan]||'Starter プラン';
+      const autoBtn=document.getElementById('auto-btn');
+      if(autoBtn)autoBtn.style.display=['pro','business'].includes(currentPlan)?'inline-flex':'none';
       // Check onboarding
       if(!d.onboarded&&!localStorage.getItem('ax_onboarded')){
         showOnboarding();
@@ -762,17 +772,6 @@ async function onAuthChange(user){
       }
     }catch(e){console.error(e);}
     localStorage.setItem('ax_onboarded','1');
-    // Update sidebar user info
-    document.getElementById('sb-user').textContent=user.displayName||user.email;
-    const planLabels={'starter':'Starter プラン','pro':'Pro プラン','business':'Business プラン','free':'未加入'};
-    const planColors={'starter':'var(--mu2)','pro':'var(--green)','business':'var(--yellow)','free':'var(--red)'};
-    document.getElementById('sb-plan').textContent=planLabels[currentPlan]||'Starter プラン';
-    document.getElementById('sb-plan').style.color=planColors[currentPlan]||'var(--mu)';
-    const planBadge=document.getElementById('plan-badge');
-    if(planBadge)planBadge.textContent=planLabels[currentPlan]||'Starter プラン';
-    // Show bulk generate only for Pro
-    const autoBtn=document.getElementById('auto-btn');
-    if(autoBtn)autoBtn.style.display=['pro','business'].includes(currentPlan)?'inline-flex':'none';
     // Show usage
     updateUsageBanner();
   }else{
