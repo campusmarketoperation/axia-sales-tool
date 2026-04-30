@@ -688,6 +688,56 @@ function savePros(){
   }
 }
 
+// Onboarding
+function obNext(step){
+  if(step===1){
+    if(!document.getElementById('ob-co').value.trim()||!document.getElementById('ob-name').value.trim()){alert('会社名と担当者名を入力してください');return;}
+  }
+  if(step===2){
+    if(!document.getElementById('ob-svc').value.trim()){alert('提供サービスを入力してください');return;}
+  }
+  document.getElementById('ob-'+step).style.display='none';
+  document.getElementById('ob-'+(step+1)).style.display='block';
+  document.querySelectorAll('.ob-step').forEach((s,i)=>{
+    if(i<step){s.classList.remove('on');s.classList.add('done');}
+    if(i===step){s.classList.add('on');}
+  });
+}
+function obBack(step){
+  document.getElementById('ob-'+step).style.display='none';
+  document.getElementById('ob-'+(step-1)).style.display='block';
+}
+async function obComplete(){
+  const co=document.getElementById('ob-co').value.trim();
+  const name=document.getElementById('ob-name').value.trim();
+  const email=document.getElementById('ob-email').value.trim();
+  const tel=document.getElementById('ob-tel').value.trim();
+  const svc=document.getElementById('ob-svc').value.trim();
+  const str=document.getElementById('ob-str').value.trim();
+  const area=document.getElementById('ob-area').value.trim();
+  const targets=Array.from(document.querySelectorAll('#ob-targets .ob-tag.on')).map(t=>t.textContent);
+  cfg.co=co||cfg.co;cfg.name=name||cfg.name;
+  cfg.email=email||cfg.email;cfg.tel=tel||cfg.tel;
+  cfg.svc=svc||cfg.svc;cfg.str=str||cfg.str;
+  cfg.targets=targets;cfg.area=area;
+  localStorage.setItem('ax_c',JSON.stringify(cfg));
+  loadSettings();
+  if(currentUser&&idToken){
+    try{await fetch('/api/user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({cfg,onboarded:true})});}catch{}
+  }
+  document.getElementById('onboarding').style.display='none';
+  document.querySelector('.sb').style.display='flex';
+  document.querySelector('.main').style.display='block';
+}
+function showOnboarding(){
+  if(currentUser?.email)document.getElementById('ob-email').value=currentUser.email;
+  if(currentUser?.displayName)document.getElementById('ob-name').value=currentUser.displayName;
+  document.getElementById('onboarding').style.display='block';
+  document.querySelector('.sb').style.display='none';
+  document.querySelector('.main').style.display='none';
+  document.getElementById('login-screen').style.display='none';
+}
+
 // Auth (doSignIn/doSignOut defined globally above)
 
 async function onAuthChange(user){
@@ -705,7 +755,13 @@ async function onAuthChange(user){
       // Load data from Firestore if available
       if(d.pros&&d.pros.length>0){pros=d.pros;renderList();updateCSel();}
       if(d.cfg){Object.assign(cfg,d.cfg);loadSettings();}
+      // Check onboarding
+      if(!d.onboarded&&!localStorage.getItem('ax_onboarded')){
+        showOnboarding();
+        return;
+      }
     }catch(e){console.error(e);}
+    localStorage.setItem('ax_onboarded','1');
     // Update sidebar user info
     document.getElementById('sb-user').textContent=user.displayName||user.email;
     const planLabels={'starter':'Starter プラン','pro':'Pro プラン','business':'Business プラン','free':'未加入'};
@@ -1023,9 +1079,91 @@ function guessCat(text){
 </div>
 
 <!-- Usage Banner -->
+<!-- Onboarding Screen -->
+<div id="onboarding" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:998;overflow-y:auto">
+  <div style="max-width:560px;margin:0 auto;padding:48px 24px">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;color:var(--green);margin-bottom:8px">AXIA Sales Tool</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:8px">はじめに設定しましょう</div>
+      <div style="font-size:13px;color:var(--mu)">入力内容はAIの営業文生成に使用されます。後から変更可能です。</div>
+    </div>
+
+    <!-- Step indicators -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:32px" id="ob-steps">
+      <div class="ob-step on" data-step="1">1</div>
+      <div style="flex:1;height:1px;background:var(--b1);margin-top:14px"></div>
+      <div class="ob-step" data-step="2">2</div>
+      <div style="flex:1;height:1px;background:var(--b1);margin-top:14px"></div>
+      <div class="ob-step" data-step="3">3</div>
+    </div>
+
+    <!-- Step 1: 基本情報 -->
+    <div id="ob-1">
+      <div style="font-size:16px;font-weight:600;margin-bottom:20px">① あなたの情報を教えてください</div>
+      <div class="field"><div class="lbl">会社名・屋号</div><input id="ob-co" placeholder="AXIA" style="margin-bottom:0"></div>
+      <div class="field"><div class="lbl">担当者名</div><input id="ob-name" placeholder="谷屋 海斗" style="margin-bottom:0"></div>
+      <div class="field"><div class="lbl">メールアドレス</div><input id="ob-email" type="email" placeholder="contact@example.com" style="margin-bottom:0"></div>
+      <div class="field"><div class="lbl">電話番号</div><input id="ob-tel" placeholder="090-XXXX-XXXX" style="margin-bottom:0"></div>
+      <button class="btn pri" style="width:100%;margin-top:20px" onclick="obNext(1)">次へ →</button>
+    </div>
+
+    <!-- Step 2: サービス情報 -->
+    <div id="ob-2" style="display:none">
+      <div style="font-size:16px;font-weight:600;margin-bottom:20px">② 提供しているサービスは？</div>
+      <div class="field"><div class="lbl">提供サービス（カンマ区切り）</div><input id="ob-svc" placeholder="LP制作、LINE構築、ChatGPT業務自動化" style="margin-bottom:0"></div>
+      <div class="field"><div class="lbl">強み・特徴</div><textarea id="ob-str" rows="3" placeholder="大阪を拠点とする学生エンジニアチームが、業界最安水準でAI・Web制作を提供。導入後も伴走サポート。"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button class="btn" style="flex:1" onclick="obBack(2)">← 戻る</button>
+        <button class="btn pri" style="flex:2" onclick="obNext(2)">次へ →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 営業ターゲット -->
+    <div id="ob-3" style="display:none">
+      <div style="font-size:16px;font-weight:600;margin-bottom:20px">③ どんな企業に営業したいですか？</div>
+      <div class="lbl" style="margin-bottom:8px">メインターゲット業種（複数選択可）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px" id="ob-targets">
+        <span class="ob-tag" onclick="this.classList.toggle('on')">飲食店</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">美容室・サロン</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">整体・整骨院</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">税理士・会計士</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">不動産</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">学習塾</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">建設・工務店</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">クリニック・医院</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">IT・Web</span>
+        <span class="ob-tag" onclick="this.classList.toggle('on')">その他</span>
+      </div>
+      <div class="field"><div class="lbl">営業エリア</div><input id="ob-area" placeholder="大阪・関西エリア" style="margin-bottom:0"></div>
+      <div class="field">
+        <div class="lbl">一番困っていること</div>
+        <select id="ob-pain">
+          <option value="list">営業リストを集めるのが大変</option>
+          <option value="writing">営業文を書くのが苦手・時間がかかる</option>
+          <option value="sending">送る作業が面倒</option>
+          <option value="all">全部大変</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button class="btn" style="flex:1" onclick="obBack(3)">← 戻る</button>
+        <button class="btn pri" style="flex:2" onclick="obComplete()">設定完了 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.ob-step{width:28px;height:28px;border-radius:50%;background:var(--sur2);border:1px solid var(--b2);color:var(--mu);font-size:12px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;flex-shrink:0}
+.ob-step.on{background:var(--green);color:#081a0e;border-color:var(--green);font-weight:700}
+.ob-step.done{background:var(--sur3);color:var(--green);border-color:rgba(74,222,128,.3)}
+.ob-tag{padding:6px 14px;font-size:13px;border:1px solid var(--b1);border-radius:20px;cursor:pointer;color:var(--mu);transition:all .1s;font-family:'Noto Sans JP',sans-serif}
+.ob-tag:hover{border-color:var(--b2);color:var(--tx)}
+.ob-tag.on{background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.25)}
+</style>
+
 <div id="usage-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--sur);border-top:1px solid var(--b1);padding:10px 24px;display:flex;justify-content:space-between;align-items:center;z-index:50;font-size:12px">
   <span id="usage-text" style="color:var(--mu)"></span>
-  <a href="https://buy.stripe.com/00w00i9ag7hKfDceIL5kk01" target="_blank" style="background:var(--green);color:#081a0e;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Proにアップグレード</a>
+  <a href="https://www.axia-sales-tool.site/lp.html#pricing" target="_blank" style="background:var(--green);color:#081a0e;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Proにアップグレード</a>
 </div>
 </body>
 </html>
