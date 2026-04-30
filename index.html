@@ -939,8 +939,7 @@ function togHunter(){const i=document.getElementById('s-hunter');i.type=i.type==
 async function searchPlaces(){
   const q=document.getElementById('map-q').value.trim();
   if(!q)return;
-  const key=placesKey||apiKey; // fallback to Gemini key field if same key
-  if(!key){alert('設定タブでGoogle Places APIキーを入力してください');return;}
+  // Places API is server-managed
   const btn=document.getElementById('search-btn');
   const load=document.getElementById('search-load');
   const err=document.getElementById('search-err');
