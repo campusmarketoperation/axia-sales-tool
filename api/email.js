@@ -69,6 +69,9 @@ export default async function handler(req, res) {
       if (JUNK_DOMAINS.some(x => domain.includes(x))) return false;
       if (local.length < 2 || local.match(/^[0-9]/)) return false;
       // local part should look like a real email (not random chars)
+      // Filter out www.* and other system-looking local parts
+      if (local.startsWith('www.') || local.startsWith('ftp.') || local.startsWith('cdn.')) return false;
+      if (local.includes('.') && local.split('.')[0].length <= 2) return false;
       if (local.length <= 2 && !['pr','hr','cs','biz','web','info','mail','contact','support','admin','sales','hello','hi','we','me','ko'].includes(local)) return false;
       return true;
     }).slice(0, 5);
