@@ -782,7 +782,7 @@ async function onAuthChange(user){
 }
 
 async function updateUsageBanner(){
-  if(!currentUser||currentPlan==='pro'||currentPlan==='business'){document.getElementById('usage-banner').style.display='none';return;}
+  if(!currentUser||['pro','business'].includes(currentPlan)){document.getElementById('usage-banner').style.display='none';return;}
   try{
     const r=await fetch(`/api/usage?uid=${currentUser.uid}&plan=${currentPlan}`);
     const d=await r.json();
