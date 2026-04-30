@@ -721,9 +721,10 @@ async function obComplete(){
   cfg.svc=svc||cfg.svc;cfg.str=str||cfg.str;
   cfg.targets=targets;cfg.area=area;
   localStorage.setItem('ax_c',JSON.stringify(cfg));
+  localStorage.setItem('ax_onboarded','1');
   loadSettings();
   if(currentUser&&idToken){
-    try{await fetch('/api/user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({cfg,onboarded:true})});}catch{}
+    try{await fetch('/api/user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({cfg})});}catch{}
   }
   document.getElementById('onboarding').style.display='none';
   document.querySelector('.sb').style.display='flex';
@@ -765,13 +766,12 @@ async function onAuthChange(user){
       if(planBadge)planBadge.textContent=planLabels[currentPlan]||'Starter プラン';
       const autoBtn=document.getElementById('auto-btn');
       if(autoBtn)autoBtn.style.display=['pro','business'].includes(currentPlan)?'inline-flex':'none';
-      // Check onboarding
-      if(!d.onboarded&&!localStorage.getItem('ax_onboarded')){
-        showOnboarding();
-        return;
-      }
     }catch(e){console.error(e);}
-    localStorage.setItem('ax_onboarded','1');
+    // Check onboarding - localStorage only
+    if(!localStorage.getItem('ax_onboarded')){
+      showOnboarding();
+      return;
+    }
     // Show usage
     updateUsageBanner();
   }else{
